@@ -1,25 +1,43 @@
-//
-// Created by Timofey Chicherin on 15.10.2025.
-//
+#pragma once
+// Investment.h
+// Abstract base class for investment instruments.
 
 #ifndef IINVESTMENT_H
 #define IINVESTMENT_H
 
-class IInvestment {
+#include <optional>
+#include <string>
+
+struct MarketSnapshot; // forward (defined in Market.h)
+
+class Investment {
  public:
-  virtual ~IInvestment() = default;
+  virtual ~Investment() = default;
 
-  virtual void UpdateToNextMonth() = 0;
+  // Called each simulation step to update internal state (prices, coupon accrual etc.)
+  virtual void UpdateFrame(const MarketSnapshot& market_snapshot, int step_index) = 0;
 
-  virtual void SetInterest(double value) { interest_ = value; }
-  virtual double GetInterest() const { return interest_; }
+  // Compute profit (positive or negative) for the current step (same time unit as UpdateFrame)
+  [[nodiscard]] virtual double ComputeProfit(const MarketSnapshot& market_snapshot, int step_index) const = 0;
 
-  virtual void SetVolatility(double value) { volatility_ = value; }
-  virtual double GetVolatility() const { return volatility_; }
+  virtual void SetInterestRate(double value) { interest_rate_ = value; }
+  [[nodiscard]] virtual double GetInterestRate() const { return interest_rate_; }
 
+  [[nodiscard]] virtual double GetVolatility() const { return volatility_; }
+
+  [[nodiscard]] virtual bool HasTerm() const { return term_.has_value(); }
+  [[nodiscard]] virtual int GetTerm() const { return *term_; }
+
+  [[nodiscard]] virtual std::string TypeName() const = 0;
 
  protected:
-  double interest_ = 0, volatility_ = 0;
+  // Protected constructor for derived classes
+  explicit Investment(double volatility = 0.0, std::optional<int> term = std::nullopt)
+      : interest_rate_(0.0), volatility_(volatility), term_(term) {}
+
+  double interest_rate_;
+  double volatility_;
+  std::optional<int> term_;
 };
 
 #endif // IINVESTMENT_H

@@ -24,3 +24,4 @@ CMakeUserPresets.json
 
 cmake-build-debug/
 .clang-format
+.idea/
