@@ -7,21 +7,20 @@ set(CMAKE_CXX_STANDARD_REQUIRED ON)
 find_package(Qt6 6.5 REQUIRED COMPONENTS Widgets)
 
 add_executable(PortfolioSim
-    src/main.cpp
-    src/MainWindow.h src/MainWindow.cpp
-    src/GameController.h src/GameController.cpp
-    src/Market.h src/Market.cpp
-    src/Portfolio.h src/Portfolio.cpp
-    src/Investment.h src/Investment.cpp
-    src/DepositInvestment.h src/DepositInvestment.cpp
-    src/StockInvestment.h src/StockInvestment.cpp
-    src/InvestmentFund.h src/InvestmentFund.cpp
-    src/Utils.h
+    app/main.cpp
+    app/MainWindow.h app/MainWindow.cpp
+    app/GameController.h app/GameController.cpp
+    app/Market.h app/Market.cpp
+    app/Portfolio.h app/Portfolio.cpp
+    app/Investment.h app/Investment.cpp
+    app/DepositInvestment.h app/DepositInvestment.cpp
+    app/StockInvestment.h app/StockInvestment.cpp
+    app/InvestmentFund.h app/InvestmentFund.cpp
+    app/Utils.h
 )
 
 target_link_libraries(PortfolioSim PRIVATE Qt6::Widgets)
 
-# Для macOS корректная упаковка фреймворков:
 if(APPLE)
     set_target_properties(PortfolioSim PROPERTIES
         MACOSX_BUNDLE TRUE
