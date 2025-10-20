@@ -1,0 +1,30 @@
+cmake_minimum_required(VERSION 3.21)
+project(PortfolioSim LANGUAGES CXX)
+
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+find_package(Qt6 6.5 REQUIRED COMPONENTS Widgets)
+
+add_executable(PortfolioSim
+    src/main.cpp
+    src/MainWindow.h src/MainWindow.cpp
+    src/GameController.h src/GameController.cpp
+    src/Market.h src/Market.cpp
+    src/Portfolio.h src/Portfolio.cpp
+    src/Investment.h src/Investment.cpp
+    src/DepositInvestment.h src/DepositInvestment.cpp
+    src/StockInvestment.h src/StockInvestment.cpp
+    src/InvestmentFund.h src/InvestmentFund.cpp
+    src/Utils.h
+)
+
+target_link_libraries(PortfolioSim PRIVATE Qt6::Widgets)
+
+# Для macOS корректная упаковка фреймворков:
+if(APPLE)
+    set_target_properties(PortfolioSim PROPERTIES
+        MACOSX_BUNDLE TRUE
+        MACOSX_BUNDLE_GUI_IDENTIFIER com.example.portfoliosim
+    )
+endif()
