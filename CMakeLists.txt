@@ -1,15 +1,29 @@
-cmake_minimum_required(VERSION 3.16)
-project(InvestmentsModeling LANGUAGES CXX)
+cmake_minimum_required(VERSION 3.21)
+project(PortfolioSim LANGUAGES CXX)
 
-set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-set(CMAKE_CXX_EXTENSIONS OFF)
 
-# find Qt6
-find_package(Qt6 REQUIRED COMPONENTS Widgets Charts)
+find_package(Qt6 6.5 REQUIRED COMPONENTS Widgets)
 
-# Recommended: add nlohmann_json only if you want to use it later
-# find_package(nlohmann_json CONFIG REQUIRED)
+add_executable(PortfolioSim
+    app/main.cpp
+    app/MainWindow.h app/MainWindow.cpp
+    app/GameController.h app/GameController.cpp
+    app/Market.h app/Market.cpp
+    app/Portfolio.h app/Portfolio.cpp
+    app/Investment.h app/Investment.cpp
+    app/DepositInvestment.h app/DepositInvestment.cpp
+    app/StockInvestment.h app/StockInvestment.cpp
+    app/InvestmentFund.h app/InvestmentFund.cpp
+    app/Utils.h
+)
 
-add_subdirectory(src)
-# add_subdirectory(tests OPTIONAL) # if you add tests later
+target_link_libraries(PortfolioSim PRIVATE Qt6::Widgets)
+
+if(APPLE)
+    set_target_properties(PortfolioSim PROPERTIES
+        MACOSX_BUNDLE TRUE
+        MACOSX_BUNDLE_GUI_IDENTIFIER com.example.portfoliosim
+    )
+endif()
