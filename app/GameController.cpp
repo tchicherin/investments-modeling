@@ -1,10 +1,14 @@
 #include "GameController.h"
+#include "Utils.h"
 
-GameController::GameController(double initialCapital, int totalMonths, double taxRate, QObject *parent)
+GameController::GameController(double initialCapital, int totalMonths, double taxRate, unsigned int seed, QObject *parent)
   : QObject(parent),
     fund_(initialCapital),
     totalMonths_(totalMonths),
     taxRate_(taxRate) {
+  if (seed != 0) {
+    Rng::init(seed);
+  }
 }
 
 void GameController::nextMonth() {

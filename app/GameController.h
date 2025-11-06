@@ -16,7 +16,7 @@ class GameController : public QObject {
   double lastMonthProfit_ = 0.0;
 
 public:
-  explicit GameController(double initialCapital, int totalMonths, double taxRate, QObject *parent = nullptr);
+  explicit GameController(double initialCapital, int totalMonths, double taxRate, unsigned int seed, QObject *parent = nullptr);
 
   [[nodiscard]] const Market &market() const { return market_; }
   Market &market() { return market_; }
@@ -29,11 +29,16 @@ public:
   [[nodiscard]] double lastMonthProfit() const { return lastMonthProfit_; }
   [[nodiscard]] double taxRate() const { return taxRate_; }
 
+  // setters for runtime changes from UI
+  void setTaxRate(double r) { taxRate_ = r; }
+  void setTotalMonths(int m) { totalMonths_ = m; }
+  void resetMonthCounter() { month_ = 0; }
+
 public slots:
   void nextMonth();
 
-signals:
-  void updated();
+  signals:
+    void updated();
 };
 
 #endif // GAMECONTROLLER_H

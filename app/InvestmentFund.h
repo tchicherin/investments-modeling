@@ -11,13 +11,14 @@ class InvestmentFund {
   double totalProfit_ = 0.0; // накопленная прибыль
   Portfolio portfolio_;
 
- public:
+public:
   explicit InvestmentFund(double initialCapital);
 
   Portfolio &portfolio() { return portfolio_; }
   [[nodiscard]] const Portfolio &portfolio() const { return portfolio_; }
 
   [[nodiscard]] double cash() const { return cash_; }
+  void setCash(double c) { cash_ = c; } // setter для UI
 
   [[nodiscard]] double equity(const Market &m) const; // cash + стоимость портфеля
   [[nodiscard]] double totalProfit() const { return totalProfit_; }

@@ -2,12 +2,19 @@
 #define UTILS_H
 
 #include <random>
+#include <mutex>
 
+// Rng — единый генератор, инициализируемый извне.
+// Если не вызвать init(), будет использован random_device-seeded генератор.
 struct Rng {
+  static void init(unsigned int seed) {
+    std::call_once(init_flag_, [&]() {
+      g_.seed(seed);
+    });
+  }
+
   static std::mt19937 &gen() {
-    static std::random_device rd;
-    static std::mt19937 g(rd());
-    return g;
+    return g_;
   }
 
   static double uniform(double a, double b) {
@@ -19,6 +26,10 @@ struct Rng {
     std::normal_distribution<double> d(mean, stddev);
     return d(gen());
   }
+
+private:
+  static std::mt19937 g_;
+  static std::once_flag init_flag_;
 };
 
 #endif // UTILS_H

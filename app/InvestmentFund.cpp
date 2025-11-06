@@ -42,8 +42,16 @@ bool InvestmentFund::buyDeposit(const QString &name, double amount, double annua
 
 bool InvestmentFund::buyStock(const QString &name, double amount, const Market &m) {
   if (amount <= 0.0 || amount > cash_) return false;
+
+  // проверяем, есть ли такая компания в рынке
+  bool found = false;
+  for (const auto &c : m.companies()) {
+    if (c.name == name) { found = true; break; }
+  }
+  if (!found) return false;
+
   cash_ -= amount;
-  portfolio_.add(std::make_shared<StockInvestment>(name, amount, m));
+  portfolio_.add(std::make_shared<StockInvestment>(name, name, amount, m));
   return true;
 }
 

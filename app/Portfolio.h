@@ -10,7 +10,7 @@ class Market;
 class Portfolio {
   std::vector<std::shared_ptr<Investment>> items_;
 
- public:
+public:
   [[nodiscard]] const std::vector<std::shared_ptr<Investment>> &items() const { return items_; }
 
   void add(const std::shared_ptr<Investment> &inv);
@@ -19,7 +19,8 @@ class Portfolio {
 
   [[nodiscard]] double totalValue(const Market &m) const;
 
-  [[nodiscard]] double stepAll(const Market &m) const; // суммарная прибыль за месяц
+  // stepAll изменяет состояние вложений (например lastPrice_), поэтому не const
+  [[nodiscard]] double stepAll(const Market &m) const;
   [[nodiscard]] int size() const { return static_cast<int>(items_.size()); }
 };
 
