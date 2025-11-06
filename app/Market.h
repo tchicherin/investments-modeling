@@ -19,9 +19,11 @@ struct StockInfo {
 class Market {
   MarketSnapshot cur_;
   std::vector<StockInfo> companies_; // пользовательские компании
-
+  std::vector<double> lastPrices_; // хранит прошлые цены
 public:
   Market();
+
+  [[nodiscard]] std::vector<double> lastPrices() const { return lastPrices_; }
 
   [[nodiscard]] const MarketSnapshot &current() const { return cur_; }
 

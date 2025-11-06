@@ -36,6 +36,8 @@ double Market::aggregateStockPrice() const {
 }
 
 void Market::randomizeMonth() {
+  lastPrices_.clear();
+  for (const auto &c : companies_) lastPrices_.push_back(c.price);
   // Если есть компании — обновляем их цены случайным блужданием.
   if (!companies_.empty()) {
     for (auto &c : companies_) {

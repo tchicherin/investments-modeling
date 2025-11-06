@@ -42,61 +42,68 @@ void MainWindow::setupUi() {
 }
 
 void MainWindow::setupSimulationTab(QWidget *w) {
-  // create widgets
-  lblMonth_ = new QLabel(this);
-  lblCapital_ = new QLabel(this);
-  lblCash_ = new QLabel(this);
-  lblLastProfit_ = new QLabel(this);
-  lblTaxRate_ = new QLabel(this);
-  lblStockPrice_ = new QLabel(this);
-  lblStockPrice_->setWordWrap(true);
-  lblDepRate_ = new QLabel(this);
+    // Верхние показатели
+    lblMonth_ = new QLabel(this);
+    lblCapital_ = new QLabel(this);
+    lblCash_ = new QLabel(this);
+    lblLastProfit_ = new QLabel(this);
+    lblTaxRate_ = new QLabel(this);
+    lblDepRate_ = new QLabel(this);
 
-  table_ = new QTableWidget(this);
-  table_->setColumnCount(4);
-  QStringList headers{"Type", "Name", "Value", "Notes"};
-  table_->setHorizontalHeaderLabels(headers);
-  table_->setSelectionBehavior(QAbstractItemView::SelectRows);
-  table_->setEditTriggers(QAbstractItemView::NoEditTriggers);
+    QFormLayout *topInfo = new QFormLayout();
+    topInfo->addRow("Month:", lblMonth_);
+    topInfo->addRow("Tax rate:", lblTaxRate_);
+    topInfo->addRow("Deposit rate:", lblDepRate_);
+    topInfo->addRow("Total equity:", lblCapital_);
+    topInfo->addRow("Cash:", lblCash_);
+    topInfo->addRow("Last month profit:", lblLastProfit_);
 
-  btnNext_ = new QPushButton("▶ Next Month", this);
-  btnAddDep_ = new QPushButton("➕ Add Deposit", this);
-  btnAddStock_ = new QPushButton("➕ Add Stock", this);
-  btnSell_ = new QPushButton("✖ Sell Selected", this);
+    // Таблица активов
+    table_ = new QTableWidget(this);
+    table_->setColumnCount(4);
+    table_->setHorizontalHeaderLabels({"Type", "Name", "Value", "Notes"});
+    table_->setSelectionBehavior(QAbstractItemView::SelectRows);
+    table_->setEditTriggers(QAbstractItemView::NoEditTriggers);
 
-  auto *topInfo = new QFormLayout();
-  topInfo->addRow("Month:", lblMonth_);
-  topInfo->addRow("Tax rate:", lblTaxRate_);
-  topInfo->addRow("Stock prices:", lblStockPrice_);
-  topInfo->addRow("Deposit rate:", lblDepRate_);
-  topInfo->addRow("Total equity:", lblCapital_);
-  topInfo->addRow("Cash:", lblCash_);
-  topInfo->addRow("Last month profit:", lblLastProfit_);
+    // Таблица цен акций
+    tblStockPrices_ = new QTableWidget(this);
+    tblStockPrices_->setColumnCount(3);
+    tblStockPrices_->setHorizontalHeaderLabels({"Company", "Price", "Δ"});
+    tblStockPrices_->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
+    tblStockPrices_->setEditTriggers(QAbstractItemView::NoEditTriggers);
+    tblStockPrices_->setSelectionMode(QAbstractItemView::NoSelection);
 
-  auto *btns = new QHBoxLayout();
-  btns->addWidget(btnNext_);
-  btns->addStretch();
-  btns->addWidget(btnAddDep_);
-  btns->addWidget(btnAddStock_);
-  btns->addWidget(btnSell_);
+    // Кнопки
+    btnNext_ = new QPushButton("▶ Next Month", this);
+    btnAddDep_ = new QPushButton("➕ Add Deposit", this);
+    btnAddStock_ = new QPushButton("➕ Add Stock", this);
+    btnSell_ = new QPushButton("✖ Sell Selected", this);
+    QHBoxLayout *btns = new QHBoxLayout();
+    btns->addWidget(btnNext_);
+    btns->addStretch();
+    btns->addWidget(btnAddDep_);
+    btns->addWidget(btnAddStock_);
+    btns->addWidget(btnSell_);
 
-  auto *layout = new QVBoxLayout();
-  layout->addLayout(topInfo);
-  layout->addWidget(table_);
-  layout->addLayout(btns);
+    // Главный вертикальный layout вкладки
+    QVBoxLayout *mainLayout = new QVBoxLayout();
+    mainLayout->addLayout(topInfo);
+    mainLayout->addWidget(tblStockPrices_); // Таблица цен акций
+    mainLayout->addWidget(table_);          // Таблица активов
+    mainLayout->addLayout(btns);
 
-  w->setLayout(layout);
+    w->setLayout(mainLayout);
 
-  // connections
-  connect(btnNext_, &QPushButton::clicked, gc_, &GameController::nextMonth);
-  connect(btnAddDep_, &QPushButton::clicked, this, &MainWindow::addDepositDialog);
-  connect(btnAddStock_, &QPushButton::clicked, this, &MainWindow::addStockDialog);
-  connect(btnSell_, &QPushButton::clicked, [this]() {
-    int sel = table_->currentRow();
-    if (sel < 0) return;
-    gc_->fund().sellInvestment(sel, gc_->market());
-    refresh();
-  });
+    // Connections
+    connect(btnNext_, &QPushButton::clicked, gc_, &GameController::nextMonth);
+    connect(btnAddDep_, &QPushButton::clicked, this, &MainWindow::addDepositDialog);
+    connect(btnAddStock_, &QPushButton::clicked, this, &MainWindow::addStockDialog);
+    connect(btnSell_, &QPushButton::clicked, [this]() {
+        int sel = table_->currentRow();
+        if (sel < 0) return;
+        gc_->fund().sellInvestment(sel, gc_->market());
+        refresh();
+    });
 }
 
 void MainWindow::setupSettingsTab(QWidget *w) {
@@ -184,64 +191,71 @@ void MainWindow::setupSettingsTab(QWidget *w) {
 }
 
 void MainWindow::refresh() {
-  const auto &m = gc_->market().current();
-  lblMonth_->setText(QString("%1 / %2").arg(gc_->month()).arg(gc_->totalMonths()));
-  lblTaxRate_->setText(QString::number(gc_->taxRate() * 100.0, 'f', 2) + "%");
+    const auto &m = gc_->market();
 
-  // Show all companies and prices in a single label
-  const auto &comps = gc_->market().companies();
-  if (!comps.empty()) {
-    QStringList parts;
-    parts.reserve(static_cast<int>(comps.size()));
-    for (const auto &s : comps) {
-      parts << QString("%1: %2").arg(s.name, QString::number(s.price, 'f', 2));
+    lblMonth_->setText(QString("%1 / %2").arg(gc_->month()).arg(gc_->totalMonths()));
+    lblTaxRate_->setText(QString::number(gc_->taxRate() * 100.0, 'f', 2) + "%");
+    lblDepRate_->setText(QString::number(m.current().depositRate * 100.0, 'f', 2) + "%");
+
+    double eq = gc_->fund().equity(m);
+    lblCapital_->setText(QString::number(eq, 'f', 2));
+    lblCash_->setText(QString::number(gc_->fund().cash(), 'f', 2));
+    lblLastProfit_->setText(QString::number(gc_->lastMonthProfit(), 'f', 2));
+
+    // --- Таблица активов
+    const auto &items = gc_->fund().portfolio().items();
+    table_->setRowCount((int) items.size());
+    for (int i = 0; i < (int) items.size(); ++i) {
+        auto inv = items[i];
+        table_->setItem(i, 0, new QTableWidgetItem(inv->type()));
+        table_->setItem(i, 1, new QTableWidgetItem(inv->name()));
+        table_->setItem(i, 2, new QTableWidgetItem(QString::number(inv->marketValue(m), 'f', 2)));
+        QString notes = (inv->type() == "Deposit") ? "monthly interest" : "mark-to-market";
+        table_->setItem(i, 3, new QTableWidgetItem(notes));
     }
-    lblStockPrice_->setText(parts.join("; "));
-  } else {
-    // fallback to aggregate single price
-    lblStockPrice_->setText(QString::number(m.stockPrice, 'f', 2));
-  }
+    table_->resizeColumnsToContents();
 
-  lblDepRate_->setText(QString::number(m.depositRate * 100.0, 'f', 2) + "%");
+    // --- Таблица цен акций
+    const auto &companies = m.companies();
+    tblStockPrices_->setRowCount((int)companies.size());
+    for (int i = 0; i < (int)companies.size(); ++i) {
+        const auto &c = companies[i];
 
-  double eq = gc_->fund().equity(gc_->market());
-  lblCapital_->setText(QString::number(eq, 'f', 2));
-  lblCash_->setText(QString::number(gc_->fund().cash(), 'f', 2));
-  lblLastProfit_->setText(QString::number(gc_->lastMonthProfit(), 'f', 2));
+        // Company name
+        auto *itemName = new QTableWidgetItem(c.name);
+        tblStockPrices_->setItem(i, 0, itemName);
 
-  // Таблица активов
-  const auto &items = gc_->fund().portfolio().items();
-  table_->setRowCount((int) items.size());
-  for (int i = 0; i < (int) items.size(); ++i) {
-    auto inv = items[i];
-    auto *c0 = new QTableWidgetItem(inv->type());
-    auto *c1 = new QTableWidgetItem(inv->name());
-    auto val = inv->marketValue(gc_->market());
-    auto *c2 = new QTableWidgetItem(QString::number(val, 'f', 2));
-    QString notes = (inv->type() == "Deposit") ? "monthly interest" : "mark-to-market";
-    auto *c3 = new QTableWidgetItem(notes);
+        // Price
+        auto *itemPrice = new QTableWidgetItem(QString::number(c.price, 'f', 2));
+        itemPrice->setTextAlignment(Qt::AlignRight | Qt::AlignVCenter);
+        tblStockPrices_->setItem(i, 1, itemPrice);
 
-    table_->setItem(i, 0, c0);
-    table_->setItem(i, 1, c1);
-    table_->setItem(i, 2, c2);
-    table_->setItem(i, 3, c3);
-  }
-  table_->resizeColumnsToContents();
+        // Δ (прирост по сравнению с прошлым месяцем)
+        double lastPrice = 1.0;
+        if (m.lastPrices().size() > static_cast<size_t>(i))
+            lastPrice = m.lastPrices()[i];
 
-  // Update settings tab values in case they were changed elsewhere
-  spinTotalMonths_->setValue(gc_->totalMonths());
-  spinInitialCapital_->setValue(gc_->fund().cash());
-  spinTaxRate_->setValue(gc_->taxRate());
-  spinDepRate_->setValue(gc_->market().current().depositRate);
+        double delta = c.price - lastPrice;
+        auto *itemDelta = new QTableWidgetItem(QString("%1").arg(delta, 0, 'f', 2));
+        itemDelta->setTextAlignment(Qt::AlignRight | Qt::AlignVCenter);
+        if (delta > 0) itemDelta->setForeground(QBrush(Qt::green));
+        else if (delta < 0) itemDelta->setForeground(QBrush(Qt::red));
+        tblStockPrices_->setItem(i, 2, itemDelta);
+    }
+    tblStockPrices_->resizeColumnsToContents();
+    refreshCompaniesTable();
+}
 
-  // refresh companies table
-  const auto &comps2 = gc_->market().companies();
-  tblCompanies_->setRowCount(static_cast<int>(comps2.size()));
-  for (int i = 0; i < static_cast<int>(comps2.size()); ++i) {
-    auto *c0 = new QTableWidgetItem(comps2[i].name);
-    auto *c1 = new QTableWidgetItem(QString::number(comps2[i].price, 'f', 2));
-    tblCompanies_->setItem(i, 0, c0);
-    tblCompanies_->setItem(i, 1, c1);
+void MainWindow::refreshCompaniesTable() {
+  const auto &comps = gc_->market().companies();
+  tblCompanies_->setRowCount(static_cast<int>(comps.size()));
+  for (int i = 0; i < (int)comps.size(); ++i) {
+    auto *itemName = new QTableWidgetItem(comps[i].name);
+    auto *itemPrice = new QTableWidgetItem(QString::number(comps[i].price, 'f', 2));
+    itemPrice->setTextAlignment(Qt::AlignRight | Qt::AlignVCenter);
+
+    tblCompanies_->setItem(i, 0, itemName);
+    tblCompanies_->setItem(i, 1, itemPrice);
   }
   tblCompanies_->resizeColumnsToContents();
 }

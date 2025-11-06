@@ -25,7 +25,7 @@ class MainWindow : public QMainWindow {
   QLabel *lblCash_;
   QLabel *lblLastProfit_;
   QLabel *lblTaxRate_;
-  QLabel *lblStockPrice_;
+  QTableWidget *tblStockPrices_;
   QLabel *lblDepRate_;
 
   QTableWidget *table_;
@@ -54,6 +54,8 @@ class MainWindow : public QMainWindow {
   void setupSettingsTab(QWidget *w);
 
   void refresh();
+
+  void refreshCompaniesTable();
 
   void addDepositDialog();
 
