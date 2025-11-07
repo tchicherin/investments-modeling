@@ -3,7 +3,7 @@ project(PortfolioSim LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
-
+set(CMAKE_AUTOMOC ON)
 find_package(Qt6 6.5 REQUIRED COMPONENTS Widgets)
 
 add_executable(PortfolioSim
@@ -17,6 +17,13 @@ add_executable(PortfolioSim
     app/StockInvestment.h app/StockInvestment.cpp
     app/InvestmentFund.h app/InvestmentFund.cpp
     app/Utils.h
+        app/Utils.cpp
+        app/CurrencyInvestment.h
+        app/CurrencyInvestment.cpp
+        app/BondInvestment.h
+        app/BondInvestment.cpp
+        app/MetalInvestment.h
+        app/MetalInvestment.cpp
 )
 
 target_link_libraries(PortfolioSim PRIVATE Qt6::Widgets)

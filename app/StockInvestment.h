@@ -1,14 +1,26 @@
-#pragma once
+#ifndef STOCK_INVESTMENT_H
+#define STOCK_INVESTMENT_H
+
 #include "Investment.h"
+#include <QString>
+
+class Market;
 
 class StockInvestment : public Investment {
-    double shares_;        // количество купленных «акций» индекса
-    double lastPrice_;     // последняя цена для расчёта Δ
-public:
-    // amount инвестируется по текущей цене — считаем количество shares
-    StockInvestment(const QString& name, double amount, const class Market& m);
+  QString assetName_; // имя акции в Market
+  double shares_; // количество купленных акций
+  double lastPrice_; // цена при последнем наблюдении
 
-    QString type() const override { return "Stock"; }
-    double marketValue(const class Market& m) const override;
-    double stepMonth(const class Market& m) override;
+ public:
+  // amount инвестируется по текущей цене assetName в Market — считаем количество shares
+  StockInvestment(const QString &name, const QString &assetName, double amount, const Market &m);
+
+  [[nodiscard]] QString type() const override { return "Stock"; }
+
+  [[nodiscard]] double marketValue(const Market &m) const override;
+
+  double stepMonth(const Market &m) override;
+  [[nodiscard]] const QString &assetName() const { return assetName_; }
 };
+
+#endif // STOCK_INVESTMENT_H
