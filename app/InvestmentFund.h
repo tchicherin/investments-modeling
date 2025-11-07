@@ -30,6 +30,9 @@ public:
   bool buyDeposit(const QString &name, double amount, double annualRate, int months);
 
   bool buyStock(const QString &name, double amount, const Market &m);
+  bool buyCurrency(const QString &name, double amount, double monthlyRate);
+  bool buyBond(const QString &name, double amount, double annualYield);
+  bool buyMetal(const QString &name, double amount, const Market& m);
 
   void sellInvestment(int index, const Market &m);
 };

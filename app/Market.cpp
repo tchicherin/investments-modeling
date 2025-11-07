@@ -1,61 +1,82 @@
 #include "Market.h"
-#include "Utils.h"
 #include <algorithm>
 
-Market::Market() {
-  // оставляем cur_.stockPrice и depositRate по умолчанию, companies_ пусты
-}
-
-void Market::addCompany(const QString &name, double price) {
-  StockInfo s;
-  s.name = name;
-  s.price = price > 0.0 ? price : 1.0;
-  companies_.push_back(s);
-
-  // обновим агрегатную цену
-  cur_.stockPrice = aggregateStockPrice();
-}
-
-void Market::removeCompanyAt(int index) {
-  if (index < 0 || index >= static_cast<int>(companies_.size())) return;
-  companies_.erase(companies_.begin() + index);
-  cur_.stockPrice = aggregateStockPrice();
-}
-
-void Market::setCompanyPrice(int index, double price) {
-  if (index < 0 || index >= static_cast<int>(companies_.size())) return;
-  companies_[index].price = price > 0.0 ? price : 0.01;
-  cur_.stockPrice = aggregateStockPrice();
-}
-
-double Market::aggregateStockPrice() const {
-  if (companies_.empty()) return cur_.stockPrice;
-  double sum = 0.0;
-  for (const auto &c : companies_) sum += c.price;
-  return sum / static_cast<double>(companies_.size());
-}
-
 void Market::randomizeMonth() {
-  lastPrices_.clear();
-  for (const auto &c : companies_) lastPrices_.push_back(c.price);
-  // Если есть компании — обновляем их цены случайным блужданием.
-  if (!companies_.empty()) {
+    // Акции: небольшой дрейф + волатильность
+    lastPrices_ = {};
     for (auto &c : companies_) {
-      // нормальное приращение: средний дрейф 0.5% мес, волатильность 5% мес
-      double change = Rng::normal(0.005, 0.05);
-      double factor = 1.0 + change;
-      if (factor <= 0.0) factor = 0.01;
-      c.price = std::max(0.01, c.price * factor);
+        lastPrices_.push_back(c.price);
+        double change = Rng::normal(0.005, 0.05); // ~0.5% средний рост, 5% волатильность
+        c.price = std::max(1.0, c.price * (1.0 + change));
     }
-    // Обновляем агрегатную stockPrice
-    cur_.stockPrice = aggregateStockPrice();
-  } else {
-    // Старая логика: если компаний нет — используем cur_.stockPrice (как раньше)
-    double stockMonthlyChange = Rng::normal(0.005, 0.05);
-    cur_.stockPrice = std::max(1.0, cur_.stockPrice * (1.0 + stockMonthlyChange));
-  }
 
-  // Депозитная ставка: медленный дрейф ±0.5 п.п. годовых в месяц
-  double depDrift = Rng::uniform(-0.005, 0.005);
-  cur_.depositRate = std::clamp(cur_.depositRate + depDrift, 0.01, 0.20);
+    // Валюты: небольшие колебания ±2%
+    for (auto &cur : currencies_) {
+        double drift = Rng::uniform(-0.02, 0.02);
+        cur.rate = std::max(0.01, cur.rate * (1.0 + drift));
+    }
+
+    // Облигации: небольшие колебания доходности ±0.5%
+    for (auto &b : bonds_) {
+        double drift = Rng::uniform(-0.005, 0.005);
+        b.annualYield = std::clamp(b.annualYield + drift, 0.0, 1.0);
+    }
+
+    // Металлы: ±3%
+    for (auto &m : metals_) {
+        double drift = Rng::uniform(-0.03, 0.03);
+        m.price = std::max(1.0, m.price * (1.0 + drift));
+    }
+}
+
+// --- Companies
+void Market::addCompany(const QString &name, double price) {
+    companies_.push_back({name, price});
+}
+void Market::removeCompanyAt(int index) {
+    if (index >= 0 && index < (int)companies_.size())
+        companies_.erase(companies_.begin() + index);
+}
+void Market::setCompanyPrice(int index, double price) {
+    if (index >= 0 && index < (int)companies_.size())
+        companies_[index].price = price;
+}
+
+// --- Currencies
+void Market::addCurrency(const QString &name, double rate) {
+    currencies_.push_back({name, rate});
+}
+void Market::removeCurrencyAt(int index) {
+    if (index >= 0 && index < (int)currencies_.size())
+        currencies_.erase(currencies_.begin() + index);
+}
+void Market::setCurrencyRate(int index, double rate) {
+    if (index >= 0 && index < (int)currencies_.size())
+        currencies_[index].rate = rate;
+}
+
+// --- Bonds
+void Market::addBond(const QString &name, double annualYield) {
+    bonds_.push_back({name, annualYield});
+}
+void Market::removeBondAt(int index) {
+    if (index >= 0 && index < (int)bonds_.size())
+        bonds_.erase(bonds_.begin() + index);
+}
+void Market::setBondYield(int index, double annualYield) {
+    if (index >= 0 && index < (int)bonds_.size())
+        bonds_[index].annualYield = annualYield;
+}
+
+// --- Metals
+void Market::addMetal(const QString &name, double price) {
+    metals_.push_back({name, price});
+}
+void Market::removeMetalAt(int index) {
+    if (index >= 0 && index < (int)metals_.size())
+        metals_.erase(metals_.begin() + index);
+}
+void Market::setMetalPrice(int index, double price) {
+    if (index >= 0 && index < (int)metals_.size())
+        metals_[index].price = price;
 }

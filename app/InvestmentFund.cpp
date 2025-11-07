@@ -4,6 +4,10 @@
 #include "StockInvestment.h"
 #include <algorithm>
 
+#include "BondInvestment.h"
+#include "CurrencyInvestment.h"
+#include "MetalInvestment.h"
+
 InvestmentFund::InvestmentFund(const double initialCapital) : cash_(initialCapital) {
 }
 
@@ -52,6 +56,37 @@ bool InvestmentFund::buyStock(const QString &name, double amount, const Market &
 
   cash_ -= amount;
   portfolio_.add(std::make_shared<StockInvestment>(name, name, amount, m));
+  return true;
+}
+
+bool InvestmentFund::buyCurrency(const QString &name, double amount, double monthlyRate) {
+  if (amount <= 0.0 || amount > cash_) return false;
+  cash_ -= amount;
+  portfolio_.add(std::make_shared<CurrencyInvestment>(name, amount, monthlyRate));
+  return true;
+}
+
+bool InvestmentFund::buyBond(const QString &name, double amount, double annualYield) {
+  if (amount <= 0.0 || amount > cash_) return false;
+  cash_ -= amount;
+  portfolio_.add(std::make_shared<BondInvestment>(name, amount, annualYield));
+  return true;
+}
+
+bool InvestmentFund::buyMetal(const QString &name, double amount, const Market &m) {
+  if (amount <= 0.0 || amount > cash_) return false;
+  cash_ -= amount;
+
+  // Найдем текущую цену металла
+  double price = 60.0;
+  for (const auto &mInfo : m.metals()) {
+    if (mInfo.name == name) {
+      price = mInfo.price;
+      break;
+    }
+  }
+
+  portfolio_.add(std::make_shared<MetalInvestment>(name, amount, price));
   return true;
 }
 

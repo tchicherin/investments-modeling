@@ -18,6 +18,12 @@ add_executable(PortfolioSim
     app/InvestmentFund.h app/InvestmentFund.cpp
     app/Utils.h
         app/Utils.cpp
+        app/CurrencyInvestment.h
+        app/CurrencyInvestment.cpp
+        app/BondInvestment.h
+        app/BondInvestment.cpp
+        app/MetalInvestment.h
+        app/MetalInvestment.cpp
 )
 
 target_link_libraries(PortfolioSim PRIVATE Qt6::Widgets)
