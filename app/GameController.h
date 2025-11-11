@@ -15,8 +15,36 @@ class GameController : public QObject {
 
   double lastMonthProfit_ = 0.0;
 
-public:
+  // история
+  std::vector<MonthResult> history_;
+
+  // параметры генерации случайностей (диапазоны) — задаются из UI
+  double stockMonthlyDriftMean_ = 0.005;
+  double stockMonthlyDriftStd_ = 0.05;
+  double currencyDriftRange_ = 0.02;
+  double metalDriftRange_ = 0.03;
+
+ public:
   explicit GameController(double initialCapital, int totalMonths, double taxRate, unsigned int seed, QObject *parent = nullptr);
+
+  // Доступ к истории
+  [[nodiscard]] const std::vector<MonthResult> &history() const { return history_; }
+
+  // Итоговая статистика (вспомогательный)
+  struct SummaryStats {
+    double finalEquity = 0.0;
+    double initialEquity = 0.0;
+    double totalReturn = 0.0;
+    double annualizedReturn = 0.0; // CAGR approximate
+    double avgMonthlyReturn = 0.0;
+    double volatilityMonthly = 0.0;
+    double percentProfitableMonths = 0.0;
+    double maxDrawdown = 0.0;
+    double totalInflow = 0.0;
+    double totalTaxPaid = 0.0;
+  };
+
+  [[nodiscard]] SummaryStats computeSummary() const;
 
   [[nodiscard]] const Market &market() const { return market_; }
   Market &market() { return market_; }
@@ -34,7 +62,12 @@ public:
   void setTotalMonths(int m) { totalMonths_ = m; }
   void resetMonthCounter() { month_ = 0; }
 
-public slots:
+  // setters for randomization params
+  void setStockDriftParams(double mean, double stddev) { stockMonthlyDriftMean_ = mean; stockMonthlyDriftStd_ = stddev; }
+  void setCurrencyDriftRange(double r) { currencyDriftRange_ = r; }
+  void setMetalDriftRange(double r) { metalDriftRange_ = r; }
+
+ public slots:
   void nextMonth();
 
   signals:

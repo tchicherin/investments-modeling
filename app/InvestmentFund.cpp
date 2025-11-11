@@ -8,34 +8,83 @@
 #include "CurrencyInvestment.h"
 #include "MetalInvestment.h"
 
-InvestmentFund::InvestmentFund(const double initialCapital) : cash_(initialCapital) {
-}
+InvestmentFund::InvestmentFund(const double initialCapital) : cash_(initialCapital) {}
 
 double InvestmentFund::equity(const Market &m) const {
   return cash_ + portfolio_.totalValue(m);
 }
 
+// Существующий простой метод (оставляем, он может вызывать detailed)
 double InvestmentFund::simulateMonth(Market &market, double taxRate) {
-  // Прибыль портфеля за месяц
-  double portfolioProfit = portfolio_.stepAll(market);
+  auto r = simulateMonthDetailed(market, taxRate, 0);
+  return r.portfolioProfit;
+}
 
-  // Налог на прибыль
+MonthResult InvestmentFund::simulateMonthDetailed(Market &market, double taxRate, int monthIndex) {
+  MonthResult res;
+  res.monthIndex = monthIndex;
+  res.equityBefore = equity(market);
+  res.cashBefore = cash_;
+
+  // Разбиваем по типам (если нужно)
+  double profitDeposits = 0.0;
+  double profitStocks = 0.0;
+  double profitBonds = 0.0;
+  double profitCurrency = 0.0;
+  double profitMetals = 0.0;
+
+  // Пройдёмся по портфелю и вызовем stepMonth для каждого инвестирования.
+  // При желании здесь можно типизировать (через dynamic_cast) и суммировать по категориям.
+  double portfolioProfit = 0.0;
+  for (const auto &inv : portfolio_.items()) {
+    // получаем прибыль/убыток от текущей позиции
+    double p = inv->stepMonth(market);
+    portfolioProfit += p;
+
+    // попытка классификации по type() — не самая быстрая, но понятная
+    QString t = inv->type();
+    if (t == "Deposit") profitDeposits += p;
+    else if (t == "Stock") profitStocks += p;
+    else if (t == "Bond") profitBonds += p;
+    else if (t == "Currency") profitCurrency += p;
+    else if (t == "Metal") profitMetals += p;
+  }
+
+  res.portfolioProfit = portfolioProfit;
+
+  // налог
   double tax = 0.0;
   if (portfolioProfit > 0.0) {
     tax = portfolioProfit * taxRate;
     cash_ -= tax;
-    totalProfit_ += portfolioProfit - tax;
-  } else {
-    totalProfit_ += portfolioProfit;
   }
+  res.taxPaid = tax;
 
-  // Притоки/оттоки: 50% от прибыли/убытка
-  double k = 0.5;
-  double flow = k * portfolioProfit;
+  // Аккумулируем чистую прибыль (после налога) в totalProfit_
+  totalProfit_ += (portfolioProfit - tax);
+
+  // Модель притоков/оттоков: простой коэффициент зависимости от прибыли
+  // (можно вынести в параметры моделирования)
+  const double flowFactor = 0.5;
+  double flow = flowFactor * portfolioProfit;
   cash_ += flow;
+  res.flow = flow;
 
-  return portfolioProfit; // до налога
+  // Обновляем cash и equity
+  res.cashAfter = cash_;
+  res.equityAfter = equity(market);
+  res.netProfit = portfolioProfit - tax + flow;
+
+  // Заполним детализацию
+  res.profitDeposits = profitDeposits;
+  res.profitStocks = profitStocks;
+  res.profitBonds = profitBonds;
+  res.profitCurrency = profitCurrency;
+  res.profitMetals = profitMetals;
+
+  return res;
 }
+
 
 bool InvestmentFund::buyDeposit(const QString &name, double amount, double annualRate, int months) {
   if (amount <= 0.0 || amount > cash_) return false;

@@ -9,6 +9,7 @@
 #include <QBrush>
 
 #include "Investment.h"
+#include "SummaryDialog.h"
 
 MainWindow::MainWindow(GameController *controller, QWidget *parent)
     : QMainWindow(parent), gc_(controller) {
@@ -37,9 +38,8 @@ void MainWindow::setupUi() {
     central->setLayout(layout);
 }
 
-/* ---------------- Simulation tab ---------------- */
 void MainWindow::setupSimulationTab(QWidget *w) {
-    // labels
+    // Labels
     lblMonth_ = new QLabel(this);
     lblCapital_ = new QLabel(this);
     lblCash_ = new QLabel(this);
@@ -55,22 +55,44 @@ void MainWindow::setupSimulationTab(QWidget *w) {
     topInfo->addRow("Cash:", lblCash_);
     topInfo->addRow("Last month profit:", lblLastProfit_);
 
-    // portfolio table
+    // Portfolio table
     table_ = new QTableWidget(this);
     table_->setColumnCount(4);
-    table_->setHorizontalHeaderLabels(QStringList{"Type", "Name", "Value", "Notes"});
+    table_->setHorizontalHeaderLabels({"Type", "Name", "Value", "Notes"});
     table_->setSelectionBehavior(QAbstractItemView::SelectRows);
     table_->setEditTriggers(QAbstractItemView::NoEditTriggers);
 
-    // stock prices table
+    // Asset tabs
+    assetTabs_ = new QTabWidget(this);
+
+    // Stocks table
     tblStockPrices_ = new QTableWidget(this);
     tblStockPrices_->setColumnCount(3);
-    tblStockPrices_->setHorizontalHeaderLabels(QStringList{"Company", "Price", "Δ"});
+    tblStockPrices_->setHorizontalHeaderLabels({"Company", "Price", "Δ"});
     tblStockPrices_->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
     tblStockPrices_->setEditTriggers(QAbstractItemView::NoEditTriggers);
     tblStockPrices_->setSelectionMode(QAbstractItemView::NoSelection);
+    assetTabs_->addTab(tblStockPrices_, "Stocks");
 
-    // buttons
+    // Bonds table
+    tblBondPrices_ = new QTableWidget(this);
+    tblBondPrices_->setColumnCount(2);
+    tblBondPrices_->setHorizontalHeaderLabels({"Bond", "Annual Yield"});
+    tblBondPrices_->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
+    tblBondPrices_->setEditTriggers(QAbstractItemView::NoEditTriggers);
+    tblBondPrices_->setSelectionMode(QAbstractItemView::NoSelection);
+    assetTabs_->addTab(tblBondPrices_, "Bonds");
+
+    // Metals table
+    tblMetalPrices_ = new QTableWidget(this);
+    tblMetalPrices_->setColumnCount(2);
+    tblMetalPrices_->setHorizontalHeaderLabels({"Metal", "Price"});
+    tblMetalPrices_->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
+    tblMetalPrices_->setEditTriggers(QAbstractItemView::NoEditTriggers);
+    tblMetalPrices_->setSelectionMode(QAbstractItemView::NoSelection);
+    assetTabs_->addTab(tblMetalPrices_, "Metals");
+
+    // Buttons
     btnNext_ = new QPushButton("▶ Next Month", this);
     btnAddDep_ = new QPushButton("➕ Add Deposit", this);
     btnAddStock_ = new QPushButton("➕ Add Stock", this);
@@ -89,14 +111,15 @@ void MainWindow::setupSimulationTab(QWidget *w) {
     btns->addWidget(btnAddMetalSim_);
     btns->addWidget(btnSell_);
 
+    // Put together
     QVBoxLayout *mainLayout = new QVBoxLayout();
     mainLayout->addLayout(topInfo);
-    mainLayout->addWidget(tblStockPrices_);
+    mainLayout->addWidget(assetTabs_);
     mainLayout->addWidget(table_);
     mainLayout->addLayout(btns);
     w->setLayout(mainLayout);
 
-    // connections
+    // Connections
     connect(btnNext_, &QPushButton::clicked, gc_, &GameController::nextMonth);
     connect(btnAddDep_, &QPushButton::clicked, this, &MainWindow::addDepositDialog);
     connect(btnAddStock_, &QPushButton::clicked, this, &MainWindow::addStockDialog);
@@ -112,9 +135,8 @@ void MainWindow::setupSimulationTab(QWidget *w) {
     connect(btnAddMetalSim_, &QPushButton::clicked, this, &MainWindow::onAddMetalSim);
 }
 
-/* ---------------- Settings tab ---------------- */
 void MainWindow::setupSettingsTab(QWidget *w) {
-    // left: simulation params form
+    // Left: simulation params
     spinTotalMonths_ = new QSpinBox(this);
     spinTotalMonths_->setRange(1, 120);
     spinTotalMonths_->setValue(gc_->totalMonths());
@@ -134,14 +156,38 @@ void MainWindow::setupSettingsTab(QWidget *w) {
     spinDepRate_->setDecimals(4);
     spinDepRate_->setValue(gc_->market().current().depositRate);
 
-    QFormLayout *form = new QFormLayout();
+    // Randomization controls
+    spinStockDriftMean_ = new QDoubleSpinBox(this);
+    spinStockDriftMean_->setRange(-0.1, 0.1);
+    spinStockDriftMean_->setDecimals(4);
+    spinStockDriftMean_->setValue(0.005);
+
+    spinStockDriftStd_ = new QDoubleSpinBox(this);
+    spinStockDriftStd_->setRange(0.0, 1.0);
+    spinStockDriftStd_->setDecimals(4);
+    spinStockDriftStd_->setValue(0.05);
+
+    spinCurrencyRange_ = new QDoubleSpinBox(this);
+    spinCurrencyRange_->setRange(0.0, 0.5);
+    spinCurrencyRange_->setDecimals(4);
+    spinCurrencyRange_->setValue(0.02);
+
+    spinMetalRange_ = new QDoubleSpinBox(this);
+    spinMetalRange_->setRange(0.0, 0.5);
+    spinMetalRange_->setDecimals(4);
+    spinMetalRange_->setValue(0.03);
+
+    auto *form = new QFormLayout();
     form->addRow("Total months:", spinTotalMonths_);
     form->addRow("Initial capital:", spinInitialCapital_);
     form->addRow("Tax rate:", spinTaxRate_);
     form->addRow("Deposit rate:", spinDepRate_);
+    form->addRow("Stock monthly drift (mean):", spinStockDriftMean_);
+    form->addRow("Stock monthly volatility (std):", spinStockDriftStd_);
+    form->addRow("Currency monthly range (±):", spinCurrencyRange_);
+    form->addRow("Metal monthly range (±):", spinMetalRange_);
 
-    // --- Right side: companies + currencies + bonds + metals + apply
-    // Companies
+    // Right: companies + asset tables + controls
     tblCompanies_ = new QTableWidget(this);
     tblCompanies_->setColumnCount(2);
     tblCompanies_->setHorizontalHeaderLabels(QStringList{"Company", "Price"});
@@ -167,7 +213,6 @@ void MainWindow::setupSettingsTab(QWidget *w) {
     tblCurrencies_->setColumnCount(2);
     tblCurrencies_->setHorizontalHeaderLabels(QStringList{"Currency", "Rate"});
     tblCurrencies_->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
-    tblCurrencies_->setEditTriggers(QAbstractItemView::DoubleClicked);
 
     btnAddCurrency_ = new QPushButton("Add Currency", this);
     btnRemoveCurrency_ = new QPushButton("Remove Selected", this);
@@ -175,12 +220,11 @@ void MainWindow::setupSettingsTab(QWidget *w) {
     currencyControls->addWidget(btnAddCurrency_);
     currencyControls->addWidget(btnRemoveCurrency_);
 
-    // Bonds
+    // Bonds (settings)
     tblBonds_ = new QTableWidget(this);
     tblBonds_->setColumnCount(2);
     tblBonds_->setHorizontalHeaderLabels(QStringList{"Bond", "Annual Yield"});
     tblBonds_->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
-    tblBonds_->setEditTriggers(QAbstractItemView::DoubleClicked);
 
     btnAddBond_ = new QPushButton("Add Bond", this);
     btnRemoveBond_ = new QPushButton("Remove Selected", this);
@@ -188,12 +232,11 @@ void MainWindow::setupSettingsTab(QWidget *w) {
     bondControls->addWidget(btnAddBond_);
     bondControls->addWidget(btnRemoveBond_);
 
-    // Metals
+    // Metals (settings)
     tblMetals_ = new QTableWidget(this);
     tblMetals_->setColumnCount(2);
     tblMetals_->setHorizontalHeaderLabels(QStringList{"Metal", "Price"});
     tblMetals_->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
-    tblMetals_->setEditTriggers(QAbstractItemView::DoubleClicked);
 
     btnAddMetal_ = new QPushButton("Add Metal", this);
     btnRemoveMetal_ = new QPushButton("Remove Selected", this);
@@ -203,7 +246,6 @@ void MainWindow::setupSettingsTab(QWidget *w) {
 
     btnApplySettings_ = new QPushButton("Apply Settings", this);
 
-    // assemble right layout
     QVBoxLayout *rightLayout = new QVBoxLayout();
     rightLayout->addWidget(tblCompanies_);
     rightLayout->addLayout(companyControls);
@@ -216,7 +258,6 @@ void MainWindow::setupSettingsTab(QWidget *w) {
     rightLayout->addStretch();
     rightLayout->addWidget(btnApplySettings_);
 
-    // combine left + right
     QHBoxLayout *h = new QHBoxLayout();
     auto *leftWidget = new QWidget(this);
     leftWidget->setLayout(form);
@@ -227,7 +268,7 @@ void MainWindow::setupSettingsTab(QWidget *w) {
 
     w->setLayout(h);
 
-    // connections - settings
+    // Connections
     connect(btnAddCompany_, &QPushButton::clicked, this, &MainWindow::onAddCompany);
     connect(btnRemoveCompany_, &QPushButton::clicked, this, &MainWindow::onRemoveCompany);
 
@@ -295,7 +336,7 @@ void MainWindow::refresh() {
     lblCash_->setText(QString::number(gc_->fund().cash(), 'f', 2));
     lblLastProfit_->setText(QString::number(gc_->lastMonthProfit(), 'f', 2));
 
-    // Portfolio table
+    // Portfolio
     const auto &items = gc_->fund().portfolio().items();
     table_->setRowCount((int) items.size());
     for (int i = 0; i < (int) items.size(); ++i) {
@@ -313,7 +354,7 @@ void MainWindow::refresh() {
     }
     table_->resizeColumnsToContents();
 
-    // Stock prices table with Δ
+    // Stocks tab: companies with Δ
     const auto &companies = m.companies();
     tblStockPrices_->setRowCount((int)companies.size());
     for (int i = 0; i < (int)companies.size(); ++i) {
@@ -322,7 +363,8 @@ void MainWindow::refresh() {
         tblStockPrices_->setItem(i, 1, new QTableWidgetItem(QString::number(c.price, 'f', 2)));
 
         double lastPrice = 1.0;
-        if (m.lastPrices().size() > (size_t)i) lastPrice = m.lastPrices()[i];
+        if (m.lastPrices().size() > (size_t)i)
+            lastPrice = m.lastPrices()[i];
         double delta = c.price - lastPrice;
         auto *itemDelta = new QTableWidgetItem(QString::number(delta, 'f', 2));
         if (delta > 0) itemDelta->setForeground(QBrush(Qt::green));
@@ -331,13 +373,37 @@ void MainWindow::refresh() {
     }
     tblStockPrices_->resizeColumnsToContents();
 
+    // Bonds tab
+    const auto &bonds = m.bonds();
+    tblBondPrices_->setRowCount((int)bonds.size());
+    for (int i = 0; i < (int)bonds.size(); ++i) {
+        tblBondPrices_->setItem(i, 0, new QTableWidgetItem(bonds[i].name));
+        tblBondPrices_->setItem(i, 1, new QTableWidgetItem(QString::number(bonds[i].annualYield, 'f', 4)));
+    }
+    tblBondPrices_->resizeColumnsToContents();
+
+    // Metals tab
+    const auto &metals = m.metals();
+    tblMetalPrices_->setRowCount((int)metals.size());
+    for (int i = 0; i < (int)metals.size(); ++i) {
+        tblMetalPrices_->setItem(i, 0, new QTableWidgetItem(metals[i].name));
+        tblMetalPrices_->setItem(i, 1, new QTableWidgetItem(QString::number(metals[i].price, 'f', 2)));
+    }
+    tblMetalPrices_->resizeColumnsToContents();
+
     refreshCompaniesTable();
     refreshAssetTables();
+    if (!summaryShown_ && gc_->month() >= gc_->totalMonths()) {
+        summaryShown_ = true;
+        auto stats = gc_->computeSummary();
+        SummaryDialog dlg(stats, gc_->history(), this);
+        dlg.exec();
+    }
 }
 
 void MainWindow::refreshCompaniesTable() {
     const auto &comps = gc_->market().companies();
-    tblCompanies_->setRowCount((int)comps.size());
+    tblCompanies_->setRowCount(static_cast<int>(comps.size()));
     for (int i = 0; i < (int)comps.size(); ++i) {
         tblCompanies_->setItem(i, 0, new QTableWidgetItem(comps[i].name));
         tblCompanies_->setItem(i, 1, new QTableWidgetItem(QString::number(comps[i].price, 'f', 2)));
@@ -346,6 +412,7 @@ void MainWindow::refreshCompaniesTable() {
 }
 
 void MainWindow::refreshAssetTables() {
+    // Currencies
     const auto &currs = gc_->market().currencies();
     tblCurrencies_->setRowCount((int)currs.size());
     for (int i = 0; i < (int)currs.size(); ++i) {
@@ -354,6 +421,7 @@ void MainWindow::refreshAssetTables() {
     }
     tblCurrencies_->resizeColumnsToContents();
 
+    // Bonds (settings table)
     const auto &bonds = gc_->market().bonds();
     tblBonds_->setRowCount((int)bonds.size());
     for (int i = 0; i < (int)bonds.size(); ++i) {
@@ -362,6 +430,7 @@ void MainWindow::refreshAssetTables() {
     }
     tblBonds_->resizeColumnsToContents();
 
+    // Metals (settings table)
     const auto &metals = gc_->market().metals();
     tblMetals_->setRowCount((int)metals.size());
     for (int i = 0; i < (int)metals.size(); ++i) {
@@ -448,15 +517,12 @@ void MainWindow::onAddCurrencySim() {
     bool ok = false;
     double amount = QInputDialog::getDouble(this, "Buy Currency", "Amount:", 10000.0, 0.0, 1e12, 2, &ok);
     if (!ok) return;
-    // choose currency
     QStringList names;
     for (const auto &c : gc_->market().currencies()) names << c.name;
     if (names.empty()) { QMessageBox::warning(this, "No currencies", "Add currencies in Settings first."); return; }
     QString name = QInputDialog::getItem(this, "Buy Currency", "Currency:", names, 0, false, &ok);
     if (!ok) return;
-    double rate = 1.0;
-    // use provided rate from market if needed (InvestmentFund::buyCurrency currently expects monthlyRate)
-    double monthlyRate = 0.0;
+    double monthlyRate = 0.0; // placeholder if your buyCurrency uses rate parameter
     if (!gc_->fund().buyCurrency(name, amount, monthlyRate)) QMessageBox::warning(this, "Not enough cash", "Insufficient cash.");
     refresh();
 }
@@ -470,7 +536,6 @@ void MainWindow::onAddBondSim() {
     if (names.empty()) { QMessageBox::warning(this, "No bonds", "Add bonds in Settings first."); return; }
     QString name = QInputDialog::getItem(this, "Buy Bond", "Bond:", names, 0, false, &ok);
     if (!ok) return;
-    // find yield
     double yield = 0.0;
     for (const auto &b : gc_->market().bonds()) if (b.name == name) { yield = b.annualYield; break; }
     if (!gc_->fund().buyBond(name, amount, yield)) QMessageBox::warning(this, "Not enough cash", "Insufficient cash.");
@@ -492,30 +557,30 @@ void MainWindow::onAddMetalSim() {
 
 /* ---------------- Apply settings ---------------- */
 void MainWindow::onApplySettings() {
-    // Apply simulation params
     gc_->setTotalMonths(spinTotalMonths_->value());
     gc_->fund().setCash(spinInitialCapital_->value());
     gc_->setTaxRate(spinTaxRate_->value());
     gc_->market().setDepositRate(spinDepRate_->value());
     gc_->resetMonthCounter();
 
-    // Apply currencies table edits (rates)
+    // apply randomization params if GameController supports them
+    gc_->setStockDriftParams(spinStockDriftMean_->value(), spinStockDriftStd_->value());
+    gc_->setCurrencyDriftRange(spinCurrencyRange_->value());
+    gc_->setMetalDriftRange(spinMetalRange_->value());
+
+    // apply editable rates/prices from tables
     for (int i = 0; i < tblCurrencies_->rowCount(); ++i) {
         auto *it = tblCurrencies_->item(i, 1);
         if (!it) continue;
         double rate = it->text().toDouble();
         gc_->market().setCurrencyRate(i, rate);
     }
-
-    // Apply bonds table edits (yields)
     for (int i = 0; i < tblBonds_->rowCount(); ++i) {
         auto *it = tblBonds_->item(i, 1);
         if (!it) continue;
         double y = it->text().toDouble();
         gc_->market().setBondYield(i, y);
     }
-
-    // Apply metals table edits (prices)
     for (int i = 0; i < tblMetals_->rowCount(); ++i) {
         auto *it = tblMetals_->item(i, 1);
         if (!it) continue;

@@ -21,7 +21,7 @@ public:
 private:
     GameController *gc_;
 
-    // Tabs
+    // Main tabs
     QTabWidget *tabs_;
 
     // --- Simulation tab widgets
@@ -32,7 +32,12 @@ private:
     QLabel *lblTaxRate_;
     QLabel *lblDepRate_;
 
-    QTableWidget *tblStockPrices_;
+    // Asset tabs inside Simulation
+    QTabWidget *assetTabs_;
+    QTableWidget *tblStockPrices_; // Stocks tab
+    QTableWidget *tblBondPrices_;  // Bonds tab
+    QTableWidget *tblMetalPrices_; // Metals tab
+
     QTableWidget *table_; // portfolio table
 
     QPushButton *btnNext_;
@@ -49,7 +54,7 @@ private:
     QDoubleSpinBox *spinTaxRate_;
     QDoubleSpinBox *spinDepRate_;
 
-    // Companies
+    // Companies (settings)
     QTableWidget *tblCompanies_;
     QLineEdit *editCompanyName_;
     QDoubleSpinBox *spinCompanyPrice_;
@@ -73,7 +78,15 @@ private:
 
     QPushButton *btnApplySettings_;
 
-    // UI setup / refresh helpers
+    bool summaryShown_ = false;
+
+    // Randomization controls (optional)
+    QDoubleSpinBox *spinStockDriftMean_;
+    QDoubleSpinBox *spinStockDriftStd_;
+    QDoubleSpinBox *spinCurrencyRange_;
+    QDoubleSpinBox *spinMetalRange_;
+
+    // helpers
     void setupUi();
     void setupSimulationTab(QWidget *w);
     void setupSettingsTab(QWidget *w);
@@ -87,27 +100,21 @@ private:
     void addStockDialog();
 
 private slots:
-    // companies
+    // settings slots
     void onAddCompany();
     void onRemoveCompany();
-
-    // currencies
-    void onAddCurrency();        // settings Add
-    void onRemoveCurrency();     // settings Remove
-    void onAddCurrencySim();     // simulation quick-buy
-
-    // bonds
-    void onAddBond();            // settings Add
-    void onRemoveBond();         // settings Remove
-    void onAddBondSim();         // simulation quick-buy
-
-    // metals
-    void onAddMetal();           // settings Add
-    void onRemoveMetal();        // settings Remove
-    void onAddMetalSim();        // simulation quick-buy
-
-    // apply settings
+    void onAddCurrency();
+    void onRemoveCurrency();
+    void onAddBond();
+    void onRemoveBond();
+    void onAddMetal();
+    void onRemoveMetal();
     void onApplySettings();
+
+    // simulation quick-buy slots
+    void onAddCurrencySim();
+    void onAddBondSim();
+    void onAddMetalSim();
 };
 
 #endif // MAIN_WINDOW_H
