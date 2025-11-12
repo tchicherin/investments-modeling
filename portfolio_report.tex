@@ -1,0 +1,164 @@
+
+\documentclass[12pt]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T2A]{fontenc}
+\usepackage[russian]{babel}
+\usepackage{amsmath, amssymb}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{hyperref}
+\usepackage{enumitem}
+\usepackage{geometry}
+\usepackage{xcolor}
+\usepackage{listings}
+\geometry{margin=1in}
+\hypersetup{colorlinks=true,linkcolor=blue,urlcolor=blue}
+
+\lstdefinestyle{cppstyle}{
+  language=C++,
+  basicstyle=\ttfamily\small,
+  keywordstyle=\color{blue}\bfseries,
+  commentstyle=\itshape\color{gray!70!black},
+  stringstyle=\color{teal!70!black},
+  showstringspaces=false,
+  columns=fullflexible,
+  tabsize=2,
+  frame=single,
+  breaklines=true
+}
+
+\begin{document}
+
+\begin{center}
+{\LARGE \textbf{Отчёт по практикуму «Система управления инвестиционным портфелем»}}\\[6pt]
+{\large Версия проекта на Qt/CMake}\\[2pt]
+\end{center}
+
+\section*{Аннотация}
+Разработана настольная симуляционная система, моделирующая работу инвестиционного фонда в помесячном режиме. Пользователь в роли управляющего наблюдает состояние рынка, реструктурирует портфель, а система автоматически начисляет доходности по активам, удерживает налог, учитывает денежные потоки и формирует сводные KPI. Графический интерфейс реализован на Qt~6 (Widgets), сборка~--- CMake, язык~--- C++17.
+
+\section{Цели и требования}
+Цель: создать учебную экономическую игру, в которой за $M$ месяцев (обычно 12--30) имитируется рыночная конъюнктура, поведение активов и управление портфелем, а по завершении рассчитываются метрики эффективности (годовая доходность, волатильность, доля прибыльных месяцев, максимальная просадка, налоги и суммарные притоки средств).
+
+Ключевые функциональные требования:
+\begin{itemize}[nosep]
+  \item Помесячный шаг симуляции, настраиваемый горизонт $M$, стартовый капитал, налоговая ставка, базовая депозитная ставка.
+  \item Рынок со стохастической динамикой: акции, валюты, облигации, металлы.
+  \item Типы инвестиций: депозит (с переоценкой ставки на пролонгации), облигации (помесячная капитализация), валюта (помесячная доходность), металл и акции (mark-to-market).
+  \item Реструктуризация портфеля в любой месяц: покупка/продажа позиций.
+  \item Автоматический учет налога на прибыль месяца и модели притоков/оттоков.
+  \item Итоговая аналитика и таблица помесячной истории.
+\end{itemize}
+
+\section{Архитектура и модули}
+Проект построен модульно (рис.~\ref{fig:modules}):
+\begin{itemize}[nosep]
+  \item \textbf{Главный цикл}: \texttt{GameController}~--- координирует шаги, хранит историю, считает KPI.
+  \item \textbf{Рынок}: \texttt{Market}~--- списки инструментов и генерация случайной динамики.
+  \item \textbf{Фонд/портфель}: \texttt{InvestmentFund} + \texttt{Portfolio}~--- кэш, позиции, расчёт прибыли/налога/потоков.
+  \item \textbf{Инструменты}: \texttt{DepositInvestment}, \texttt{BondInvestment}, \texttt{CurrencyInvestment}, \texttt{StockInvestment}, \texttt{MetalInvestment}.
+  \item \textbf{GUI}: \texttt{MainWindow} (вкладки Simulation/Settings), \texttt{SummaryDialog}.
+\end{itemize}
+
+\noindent
+Назначение ключевых файлов:
+\begin{center}
+\begin{tabular}{ll}
+\toprule
+Файл & Назначение \\
+\midrule
+\texttt{main.cpp} & Точка входа, базовые параметры симуляции \\
+\texttt{GameController.cpp} & Шаг месяца, история, расчёт KPI \\
+\texttt{Market.cpp} & Стохастическая динамика рынка, CRUD справочников \\
+\texttt{InvestmentFund.cpp} & Симуляция месяца: прибыль, налог, притоки \\
+\texttt{DepositInvestment.cpp} & Депозит: помесячная капитализация + пролонгация \\
+\texttt{BondInvestment.cpp} & Облигация: помесячная доходность от номинала \\
+\texttt{CurrencyInvestment.cpp} & Валюта: помесячная доходность от суммы \\
+\texttt{MetalInvestment.cpp}, \texttt{StockInvestment.cpp} & Оценка по рыночной цене (mark-to-market) \\
+\texttt{MainWindow.cpp} & Интерфейс: вкладки, таблицы, покупки/продажа, настройки \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+\section{Модель рынка и доходностей}
+\subsection*{Акции}
+Ежемесячное изменение цены моделируется нормальным распределением:
+\[
+\Delta S \sim \mathcal{N}(\mu, \sigma), \quad S_{t+1} = \max\{1,\; S_t (1 + \Delta S)\},
+\]
+где по умолчанию $\mu \approx 0{,}5\%$, $\sigma \approx 5\%$.
+
+\subsection*{Валюты}
+Курс обновляется равномерным дрейфом в диапазоне $\pm r_\text{fx}$:
+\[
+R_{t+1} = \max\{0.01,\; R_t (1 + U[-r_\text{fx}, r_\text{fx}])\}, \quad r_\text{fx}\approx 2\%.
+\]
+
+\subsection*{Облигации}
+Годовая доходность $\mathit{Y}$ слабо колеблется ($\pm 0{,}5$ п.п.) и зажимается в $[0,1]$. Начисление в портфеле~--- помесячная капитализация по номиналу $P$:
+\[
+\text{profit}_{t} = \frac{\mathit{Y}}{12} \cdot P, \qquad P \leftarrow P + \text{profit}_{t}.
+\]
+
+\subsection*{Металлы}
+Цена металла изменяется равномерно в $\pm r_\text{metal}$ (по умолчанию $3\%$), рыночная стоимость позиции~--- mark-to-market.
+
+\subsection*{Депозиты}
+Помесячная капитализация по текущей ставке $\mathit{R}_\text{year}$:
+\[
+\text{interest}_t = \frac{\mathit{R}_\text{year}}{12} \cdot P, \qquad P \leftarrow P + \text{interest}_t.
+\]
+По окончании срока депозит пролонгируется: ставка обновляется из рыночной \texttt{depositRate} с ограничениями (например, $[1\%,25\%]$).
+
+\section{Алгоритм помесячной симуляции}
+На каждом шаге $t$:
+\begin{enumerate}[nosep]
+  \item Обновить рынок (акции, валюты, облигации, металлы) согласно моделям.
+  \item Для каждой позиции портфеля вычислить прибыль/убыток \texttt{stepMonth()} и агрегировать портфельную прибыль $\Pi_t$.
+  \item Налог: если $\Pi_t > 0$, удержать $\mathrm{Tax}_t = \tau \cdot \Pi_t$ (уменьшить кэш).
+  \item Притоки/оттоки: $\mathrm{Flow}_t = k \cdot \Pi_t$ (по умолчанию $k=0{,}5$), учесть в кэше.
+  \item Обновить: \emph{cash}, \emph{equity} $= \text{cash} + \text{market value}$.
+  \item Записать в историю: \emph{EquityBefore}, \emph{PortfolioProfit}, \emph{TaxPaid}, \emph{Flow}, \emph{EquityAfter}.
+\end{enumerate}
+
+\section{Показатели эффективности}
+Пусть $E_t$~--- стоимость капитала после месяца $t$, $E_0$~--- начальная стоимость. Тогда:
+\begin{align*}
+\text{Итоговая доходность} &: \quad R_\text{tot} = \frac{E_T - E_0}{E_0},\\
+\text{Месячные доходности} &: \quad r_t = \frac{E_t - E_{t-1}}{E_{t-1}},\\
+\text{Средняя и волатильность} &: \quad \bar r = \frac{1}{T}\sum r_t, \quad \sigma = \sqrt{\frac{1}{T}\sum (r_t - \bar r)^2},\\
+\text{Годовая (аппрокс.)} &: \quad R_\text{ann} \approx (1 + R_\text{tot})^{12/T} - 1,\\
+\text{Доля прибыльных месяцев} &: \quad \frac{\#\{t: r_t > 0\}}{T}\cdot 100\%,\\
+\text{Макс. просадка} &: \quad \max_{t}\frac{\max_{s\le t} E_s - E_t}{\max_{s\le t} E_s}.
+\end{align*}
+
+\section{Интерфейс пользователя}
+\textbf{Simulation}: сводные метрики (месяц/из $M$, ставка налога, ставка депозита, equity, cash, прибыль за прошлый месяц), таблица портфеля (тип, имя, стоимость, комментарий), вкладки цен: акции (цена, $\Delta$), облигации (годовая доходность), металлы (цена); кнопки: \emph{Next Month}, \emph{Add Deposit/Stock/Currency/Bond/Metal}, \emph{Sell Selected}.
+
+\textbf{Settings}: параметры симуляции (месяцы $M$, стартовый капитал, налог $\tau$, базовая депозитная ставка), параметры случайности (дрейф/вола акций, диапазоны валют/металлов), редактируемые справочники (компании, валюты, облигации, металлы), кнопка \emph{Apply Settings}.
+
+\section{Сборка и запуск}
+Требования: CMake ($\geq$3.21), компилятор C++17, Qt~6 (Widgets).
+
+Пример сборки:
+\begin{lstlisting}[style=cppstyle]
+cmake -S . -B build -DCMAKE_PREFIX_PATH=/path/to/Qt/6.5/gcc_64
+cmake --build build -j
+./build/PortfolioSim
+\end{lstlisting}
+
+\section{Тестирование и воспроизводимость}
+В проекте используется единая генерация случайностей и фиксируемые начальные параметры. Для воспроизводимых экспериментов рекомендуется фиксировать seed генератора и сохранять историю помесячных результатов для последующего анализа.
+
+\section{Ограничения и развитие}
+\begin{itemize}[nosep]
+  \item Не учитываются комиссии/спрэды/дивиденды/купоны отдельно от переоценки~--- можно добавить.
+  \item Модель притоков/оттоков задаётся простым коэффициентом~--- можно связать с текущей доходностью/волатильностью.
+  \item Расширить отчётность: VaR/CVaR, Sharpe/Sortino, стресс-тесты.
+\end{itemize}
+
+\section*{Заключение}
+Создана учебная симуляция портфельного управления с помесячной динамикой рынка, учётом налога и денежных потоков, интерактивным интерфейсом и итоговой аналитикой. Архитектура модульная, параметры гибко настраиваются, что позволяет исследовать стратегии аллокации активов при различных сценариях волатильности.
+
+\end{document}
