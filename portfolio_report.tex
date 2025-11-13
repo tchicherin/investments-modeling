@@ -297,13 +297,111 @@ C++ стандартная библиотека (\texttt{<algorithm>}, \texttt{<
 \end{tabular}
 \end{center}
 
-\section{Краткое описание пользовательского интерфейса}
-\textbf{Simulation.} Верхняя панель: месяц/из $M$, налог, ставка депозита, \emph{Total Equity}, \emph{Cash}, \emph{Last Month Profit}. Таблица портфеля и вкладки котировок (акции с $\Delta$, облигации, металлы). Кнопки: \emph{Next Month}, \emph{Add Deposit/Stock/Currency/Bond/Metal}, \emph{Sell Selected}.
+\section{Подробное описание пользовательского интерфейса}
 
-\textbf{Settings.} Параметры: \emph{Total months}, \emph{Initial capital}, \emph{Tax rate}, \emph{Deposit rate}; справа — справочники \emph{Companies}, \emph{Currencies}, \emph{Bonds}, \emph{Metals}. Кнопка \emph{Apply Settings}.
+Графический интерфейс состоит из двух основных вкладок: \textbf{Simulation} (моделирование и управление портфелем) и \textbf{Settings} (настройка параметров и справочников рынка). По завершении горизонта автоматически открывается окно \textbf{Simulation Summary} со сводной аналитикой и экспортом.
 
-\textbf{Диалоги.} Покупка депозита (сумма+ставка+срок), акции (сумма+компания), валюты (сумма+месячная ставка), облигации (сумма+выпуск), металла (сумма+тип). Валидация на кэш/параметры.
+\subsection*{Вкладка \textbf{Simulation}}
+\paragraph{Верхняя информационная панель.}
+Отображает агрегированные показатели текущего шага:
+\begin{itemize}[nosep]
+  \item \textbf{Month} — текущий месяц / общее число месяцев $M$.
+  \item \textbf{Tax rate} — действующая ставка налога (доля единицы, например 0.17 = 17\%).
+  \item \textbf{Deposit rate} — базовая годовая ставка депозита (используется при пролонгации вкладов).
+  \item \textbf{Total Equity} — стоимость капитала = \emph{Cash} + рыночная оценка портфеля.
+  \item \textbf{Cash} — свободные денежные средства фонда.
+  \item \textbf{Last Month Profit} — итоговая прибыль/убыток портфеля за предыдущий месяц.
+\end{itemize}
 
-\textbf{Итоги.} \emph{Simulation Summary}: KPI и таблица помесячной истории, \emph{Export CSV}.
+\paragraph{Панель котировок и доходностей.}
+Правый блок с табами рыночных данных:
+\begin{itemize}[nosep]
+  \item \textbf{Stocks}: \emph{Name}, \emph{Price}, $\Delta$ (изменение к прошлому месяцу; может показываться как абсолютное и/или процентное).
+  \item \textbf{Bonds}: \emph{Name}, \emph{Annual Yield} (годовая доходность, используется для расчёта купона).
+  \item \textbf{Metals}: \emph{Name}, \emph{Price} (рыночная цена металла).
+\end{itemize}
+Котировки обновляются на каждом клике \emph{Next Month} согласно стохастической модели.
 
+\paragraph{Таблица портфеля.}
+Центральный блок со списком позиций:
+\begin{itemize}[nosep]
+  \item Колонки: \emph{Type} (Deposit/Stock/Currency/Bond/Metal), \emph{Name}, \emph{Market Value} (рыночная оценка), \emph{Notes} (подсказка по учёту: например, ``monthly interest'' для Deposit, ``mark-to-market'' для Stock/Metal).
+  \item Поддерживается выбор строки для операции \emph{Sell Selected}.
+\end{itemize}
+
+\paragraph{Кнопки действий.}
+\begin{itemize}[nosep]
+  \item \textbf{Next Month} — выполнить один помесячный шаг: обновить рынок, пересчитать портфель, удержать налог и применить модель притоков/оттоков.
+  \item \textbf{Add Deposit / Add Stock / Add Currency / Add Bond / Add Metal} — открыть соответствующий диалог покупки.
+  \item \textbf{Sell Selected} — продать выбранную позицию по текущей рыночной цене (средства зачисляются в \emph{Cash}).
+\end{itemize}
+Если соответствующий справочник пуст (нет компаний/валют/облигаций/металлов), при попытке покупки показывается предупреждение, что сначала нужно добавить элементы во вкладке \emph{Settings}.
+
+\subsection*{Вкладка \textbf{Settings}}
+\paragraph{Параметры симуляции (левая колонка).}
+\begin{itemize}[nosep]
+  \item \textbf{Total months} — горизонт моделирования $M$.
+  \item \textbf{Initial capital} — начальный капитал (значение \emph{Cash} в момент старта).
+  \item \textbf{Tax rate} — ставка налога на положительную прибыль месяца (0..1).
+  \item \textbf{Deposit rate} — базовая годовая ставка депозита (используется при пролонгации вкладов).
+  \item \textbf{Randomization controls} — параметры стохастики рынка:
+    \begin{itemize}[nosep,leftmargin=1.5em]
+      \item средний дрейф и стандартное отклонение для \emph{Stocks} (в долях в месяц);
+      \item диапазоны случайных колебаний для \emph{Currencies} и \emph{Metals}.
+    \end{itemize}
+\end{itemize}
+Кнопка \textbf{Apply Settings} применяет параметры к модели и справочникам, сбрасывает счётчик месяцев и перерисовывает интерфейс.
+
+\paragraph{Справочники рынка (правая колонка).}
+Редактируемые таблицы по четырём классам активов:
+\begin{itemize}[nosep]
+  \item \textbf{Companies} (акции): \emph{Name}, \emph{Price}. Кнопки \emph{Add}/\emph{Remove}.
+  \item \textbf{Currencies} (валюты): \emph{Name}, \emph{Rate}. Кнопки \emph{Add}/\emph{Remove}.
+  \item \textbf{Bonds} (облигации): \emph{Name}, \emph{Annual Yield}. Кнопки \emph{Add}/\emph{Remove}.
+  \item \textbf{Metals} (металлы): \emph{Name}, \emph{Price}. Кнопки \emph{Add}/\emph{Remove}.
+\end{itemize}
+Редактирование значений происходит прямо в ячейках; удаление требует выбора строки. Некорректные значения (отрицательные цены/ставки, пустые названия) отклоняются.
+
+\subsection*{Диалоги покупки и валидация}
+Каждая команда \emph{Add …} открывает лёгкий модальный диалог. Общие правила:
+\begin{itemize}[nosep]
+  \item \textbf{Проверка кэша:} сумма покупки не может превышать текущее \emph{Cash}.
+  \item \textbf{Числовые поля:} должны быть положительными; ставки обычно вводятся как доли (например, 0.12 = 12\%).
+  \item \textbf{Справочники:} если список пуст (например, нет компаний), диалог сообщит о необходимости предварительно заполнить \emph{Settings}.
+\end{itemize]
+Состав полей:
+\begin{itemize}[nosep]
+  \item \textbf{Deposit:} \emph{Name}, \emph{Amount}, \emph{Annual rate}, \emph{Term (months)}. Проценты начисляются помесячно; по окончании срока вклад пролонгируется по текущей \emph{Deposit rate}.
+  \item \textbf{Stock:} выбор \emph{Company} из справочника и \emph{Amount}. Количество акций вычисляется по текущей цене в момент покупки; далее позиция оценивается mark-to-market.
+  \item \textbf{Currency:} \emph{Name} (или выбор из списка), \emph{Amount}, \emph{Monthly rate} (модель помесячной доходности на сумму).
+  \item \textbf{Bond:} выбор \emph{Bond} из справочника и \emph{Amount}. Купон считается как \emph{principal} $\cdot$ \emph{AnnualYield}/12, капитализируется в номинал.
+  \item \textbf{Metal:} выбор \emph{Metal} и \emph{Amount}. Оценка позиции изменяется вместе с рыночной ценой (mark-to-market).
+\end{itemize}
+
+\subsection*{Сценарии окончания горизонта и повторный запуск}
+Когда \emph{Month} достигает $M$, выполняются действия:
+\begin{itemize}[nosep]
+  \item Автоматически открывается окно \textbf{Simulation Summary} со сводкой и историей.
+  \item Кнопка \emph{Next Month} перестаёт продвигать время (игнорируется) до тех пор, пока параметры не будут заново применены через \emph{Settings} $\rightarrow$ \emph{Apply Settings} (это сбрасывает счётчик и состояние).
+\end{itemize}
+
+\subsection*{Окно \textbf{Simulation Summary} и экспорт}
+В верхней части показываются KPI:
+\begin{itemize}[nosep]
+  \item начальный/финальный \emph{Equity}, абсолютная и относительная итоговая доходность;
+  \item средняя месячная доходность и месячная волатильность;
+  \item годовая доходность (аппроксимация по итоговой);
+  \item доля прибыльных месяцев (\%);
+  \item максимальная просадка (\emph{Max Drawdown});
+  \item суммарные притоки/оттоки и уплаченный налог.
+\end{itemize]
+Ниже — таблица помесячной истории с колонками:
+\emph{Month}, \emph{EquityBefore}, \emph{PortfolioProfit}, \emph{TaxPaid}, \emph{Flow}, \emph{EquityAfter} (в некоторых конфигурациях также \emph{NetProfit}). Кнопка \textbf{Export CSV} сохраняет данные в файл (по умолчанию \texttt{simulation\_history.csv}) для последующего анализа в Excel/ноутбуке.
+
+\subsection*{Поведение при ошибках и подсказки}
+\begin{itemize}[nosep]
+  \item При попытке купить без достаточного кэша диалог показывает предупреждение, покупка не выполняется.
+  \item При пустых справочниках покупки запрещены, показывается подсказка перейти в \emph{Settings}.
+  \item Поля ставок/цен/сумм валидируются на неотрицательность; при некорректном вводе кнопка подтверждения диалога блокируется.
+\end{itemize}
 \end{document}
