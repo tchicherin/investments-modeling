@@ -12,10 +12,13 @@
 \usepackage{geometry}
 \usepackage{xcolor}
 \usepackage{listings}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning,shapes.multipart}
+
 \geometry{margin=1in}
 \hypersetup{colorlinks=true,linkcolor=blue,urlcolor=blue}
 
-\lstdefinestyle{cppstyle}{
+\lstdefinestyle{cppstyle}{%
   language=C++,
   basicstyle=\ttfamily\small,
   keywordstyle=\color{blue}\bfseries,
@@ -32,133 +35,275 @@
 
 \begin{center}
 {\LARGE \textbf{Отчёт по практикуму «Система управления инвестиционным портфелем»}}\\[6pt]
-{\large Версия проекта на Qt/CMake}\\[2pt]
+{\large Qt/CMake, C++17}\\[2pt]
 \end{center}
 
-\section*{Аннотация}
-Разработана настольная симуляционная система, моделирующая работу инвестиционного фонда в помесячном режиме. Пользователь в роли управляющего наблюдает состояние рынка, реструктурирует портфель, а система автоматически начисляет доходности по активам, удерживает налог, учитывает денежные потоки и формирует сводные KPI. Графический интерфейс реализован на Qt~6 (Widgets), сборка~--- CMake, язык~--- C++17.
+\section{Уточнённая формулировка задания}
+Требуется разработать настольное приложение, моделирующее работу управляющего инвестиционным фондом. Симуляция ведётся помесячно в течение $M$ шагов. На каждом шаге обновляется \emph{рынок} (акции, валюты, облигации, металлы), пересчитывается \emph{портфель} (прибыль/убыток по позициям), удерживается налог с положительной прибыли и моделируются притоки/оттоки капитала. Пользователь может в любой момент покупать/продавать инструменты. По завершении выводятся сводные KPI и помесячная история; доступен экспорт в CSV.
 
-\section{Цели и требования}
-Цель: создать учебную экономическую игру, в которой за $M$ месяцев (обычно 12--30) имитируется рыночная конъюнктура, поведение активов и управление портфелем, а по завершении рассчитываются метрики эффективности (годовая доходность, волатильность, доля прибыльных месяцев, максимальная просадка, налоги и суммарные притоки средств).
+\section{Диаграмма классов}
+\begin{figure}[h!]
+\centering
+\resizebox{0.95\linewidth}{!}{\begin{tikzpicture}[transform shape,
+  node distance=12mm and 14mm,
+  class/.style={rectangle, draw, rounded corners, align=center, font=\small, minimum width=3.2cm, minimum height=9mm, fill=gray!3},
+  abstract/.style={class, dashed, fill=gray!1},
+  uses/.style={dashed,-{Stealth}},
+  has/.style={-{Stealth}},
+  inherit/.style={-{Triangle[length=3mm,width=3mm]}},
+  agg/.style={-{Diamond[open]}-{Stealth}}
+]
 
-Ключевые функциональные требования:
-\begin{itemize}[nosep]
-  \item Помесячный шаг симуляции, настраиваемый горизонт $M$, стартовый капитал, налоговая ставка, базовая депозитная ставка.
-  \item Рынок со стохастической динамикой: акции, валюты, облигации, металлы.
-  \item Типы инвестиций: депозит (с переоценкой ставки на пролонгации), облигации (помесячная капитализация), валюта (помесячная доходность), металл и акции (mark-to-market).
-  \item Реструктуризация портфеля в любой месяц: покупка/продажа позиций.
-  \item Автоматический учет налога на прибыль месяца и модели притоков/оттоков.
-  \item Итоговая аналитика и таблица помесячной истории.
-\end{itemize}
+\node[class] (mw) {MainWindow\\\footnotesize GUI};
+\node[class, right=of mw] (sd) {SummaryDialog\\\footnotesize GUI};
 
-\section{Архитектура и модули}
-Проект построен модульно (рис.~\ref{fig:modules}):
-\begin{itemize}[nosep]
-  \item \textbf{Главный цикл}: \texttt{GameController}~--- координирует шаги, хранит историю, считает KPI.
-  \item \textbf{Рынок}: \texttt{Market}~--- списки инструментов и генерация случайной динамики.
-  \item \textbf{Фонд/портфель}: \texttt{InvestmentFund} + \texttt{Portfolio}~--- кэш, позиции, расчёт прибыли/налога/потоков.
-  \item \textbf{Инструменты}: \texttt{DepositInvestment}, \texttt{BondInvestment}, \texttt{CurrencyInvestment}, \texttt{StockInvestment}, \texttt{MetalInvestment}.
-  \item \textbf{GUI}: \texttt{MainWindow} (вкладки Simulation/Settings), \texttt{SummaryDialog}.
-\end{itemize}
+\node[class, below=of mw] (gc) {GameController};
+\node[class, below left=of gc] (mkt) {Market};
+\node[class, below right=of gc] (fund) {InvestmentFund};
+\node[class, below=of fund] (port) {Portfolio};
 
-\noindent
-Назначение ключевых файлов:
+\node[abstract, below=of port] (inv) {Investment\\\footnotesize (abstract)};
+\node[class, below left=8mm and 2.8cm of inv] (dep) {DepositInvestment};
+\node[class, below=8mm of inv] (bond) {BondInvestment};
+\node[class, below right=8mm and 2.8cm of inv] (cur) {CurrencyInvestment};
+\node[class, right=18mm of cur] (stock) {StockInvestment};
+\node[class, left=18mm of dep] (metal) {MetalInvestment};
+
+\draw[uses] (mw) -- (gc);
+\draw[uses] (sd) |- (gc);
+
+\draw[has] (gc) -- (mkt);
+\draw[has] (gc) -- (fund);
+\draw[has] (fund) -- (port);
+
+\draw[agg] (port) -- node[midway, right, font=\scriptsize]{*} (inv);
+
+\draw[inherit] (dep) -- (inv);
+\draw[inherit] (bond) -- (inv);
+\draw[inherit] (cur) -- (inv);
+\draw[inherit] (stock) -- (inv);
+\draw[inherit] (metal) -- (inv);
+
+\end{tikzpicture}}
+\caption{Компоненты приложения и их связи.}
+\label{fig:class-diagram}
+\end{figure}
+
+\section{Спецификация основных классов (интерфейсы C++)}
+Ниже приведены ключевые фрагменты интерфейсов с принудительными разрывами страниц после указанных блоков, чтобы избежать «разрыва» кода на границе страницы.
+
+\subsection*{GameController}
+\begin{lstlisting}[style=cppstyle]
+class GameController : public QObject {
+public:
+  GameController(double initialCapital, int totalMonths,
+                 double taxRate, unsigned seed, QObject* parent=nullptr);
+  void nextMonth();                // один шаг симуляции: рынок -> фонд -> история
+  SummaryStats computeSummary() const; // KPI
+  Market& market();                // доступ к Market для GUI
+  InvestmentFund& fund();          // доступ к InvestmentFund для GUI
+  int totalMonths() const;         // горизонт моделирования
+  int currentMonth() const;        // текущий месяц (0..M-1)
+signals:
+  void updated();                  // сигнал на обновление GUI
+};
+\end{lstlisting}
+
+\subsection*{Market}
+\begin{lstlisting}[style=cppstyle]
+struct Company  { QString name; double price; };
+struct Currency { QString name; double rate; };
+struct Bond     { QString name; double annualYield; };
+struct Metal    { QString name; double price; };
+struct MarketState { double depositRate; };
+
+class Market {
+public:
+  void randomizeMonth(); // сдвиг цен/ставок за месяц (акции, FX, бонды, металлы)
+
+  // чтение справочников
+  const std::vector<Company>&  companies()  const;
+  const std::vector<Currency>& currencies() const;
+  const std::vector<Bond>&     bonds()      const;
+  const std::vector<Metal>&    metals()     const;
+  const MarketState&           current()    const;
+
+  // управление справочниками (add/remove/set ...)
+  void addCompany(const QString& name, double price);
+  void removeCompanyAt(int index);
+  void setCompanyPrice(int index, double price);
+  // ... (аналогично для валют/облигаций/металлов)
+
+  // базовые ставки
+  void setDepositRate(double r);
+};
+\end{lstlisting}
+\pagebreak
+
+\subsection*{Investment (абстрактный) и часть наследников}
+\begin{lstlisting}[style=cppstyle]
+class Market;
+
+class Investment {
+public:
+  explicit Investment(const QString& name);
+  virtual ~Investment() = default;
+
+  virtual QString type() const = 0;                // "Deposit"/"Stock"/...
+  const QString& name() const;                     // отображаемое имя
+  virtual double marketValue(const Market&) const = 0; // оценка позиции
+  virtual double stepMonth(const Market&) = 0;     // прибыль за месяц
+};
+
+class DepositInvestment : public Investment {
+public:
+  DepositInvestment(const QString& name, double amount,
+                    double annualRate, int months);
+  double marketValue(const Market&) const override;
+  double stepMonth(const Market& mkt) override; // % и пролонгация по depositRate
+};
+\end{lstlisting}
+\pagebreak
+
+\subsection*{Остальные наследники Investment}
+\begin{lstlisting}[style=cppstyle]
+class BondInvestment : public Investment {
+public:
+  BondInvestment(const QString& name, double amount, double annualYield);
+  double marketValue(const Market&) const override;
+  double stepMonth(const Market&) override; // купон = principal*(yield/12)
+};
+
+class CurrencyInvestment : public Investment {
+public:
+  CurrencyInvestment(const QString& name, double amount, double monthlyRate);
+  double marketValue(const Market&) const override;
+  double stepMonth(const Market&) override; // amount *= (1 + monthlyRate)
+};
+
+class MetalInvestment : public Investment {
+public:
+  MetalInvestment(const QString& name, double amount, double initialPrice);
+  double marketValue(const Market&) const override;
+  double stepMonth(const Market&) override; // mark-to-market по m.metals()
+};
+[style=cppstyle]
+class StockInvestment : public Investment {
+public:
+  StockInvestment(const QString& name, const QString& assetName,
+                  double amount, const Market& m);
+  double marketValue(const Market& m) const override;
+  double stepMonth(const Market& m) override; // mark-to-market по m.companies()
+};
+\end{lstlisting}
+
+\subsection*{Portfolio и MonthResult}
+\begin{lstlisting}[style=cppstyle]
+class Portfolio {
+public:
+  void add(const std::shared_ptr<Investment>& inv);
+  void removeAt(int index);
+  double totalValue(const Market& m) const; // суммарная оценка
+  double stepAll(const Market& m) const;    // суммарная прибыль за месяц
+  const std::vector<std::shared_ptr<Investment>>& items() const;
+  int size() const;
+};
+struct MonthResult {
+  int monthIndex;
+  double equityBefore, portfolioProfit, taxPaid, flow, equityAfter;
+  };
+\end{lstlisting}
+\pagebreak
+
+\subsection*{InvestmentFund}
+\begin{lstlisting}[style=cppstyle]
+class InvestmentFund {
+public:
+  explicit InvestmentFund(double initialCapital);
+  double equity(const Market& m) const;
+  double cash() const;              void setCash(double v);
+  Portfolio& portfolio();           const Portfolio& portfolio() const;
+
+  // Месячный шаг
+  double      simulateMonth(Market& market, double taxRate);
+  MonthResult simulateMonthDetailed(Market& market, double taxRate, int month);
+
+  // Операции покупки/продажи
+  bool buyDeposit(const QString& name, double amount, double annualRate, int months);
+  bool buyStock  (const QString& name, double amount, const Market& m);
+  bool buyCurrency(const QString& name, double amount, double monthlyRate);
+  bool buyBond   (const QString& name, double amount, double annualYield);
+  bool buyMetal  (const QString& name, double amount, const Market& m);
+  void sellInvestment(int index, const Market& m);
+};
+\end{lstlisting}
+
+\section{Диаграмма объектов}
+\begin{figure}[h!]
+\centering
+\resizebox{0.95\linewidth}{!}{\begin{tikzpicture}[transform shape,
+  node distance=10mm and 16mm,
+  obj/.style={rectangle, draw, rounded corners=2pt, align=center, font=\small, fill=blue!3, minimum width=3.6cm}
+]
+\node[obj] (mw) {mw: MainWindow};
+\node[obj, right=of mw] (sd) {sd: SummaryDialog\\\footnotesize (по завершении)};
+
+\node[obj, below=of mw] (gc) {gc: GameController};
+\node[obj, below left=of gc] (mkt) {mkt: Market\\\footnotesize \{companies, currencies, bonds, metals, depositRate\}};
+\node[obj, below right=of gc] (fund) {fund: InvestmentFund\\\footnotesize cash, totalProfit};
+\node[obj, below=of fund] (port) {port: Portfolio\\\footnotesize items: vector<Investment>};
+
+\node[obj, below left=of port] (d) {DepositInvestment("Bank", ...)};
+\node[obj, below=of port]      (s) {StockInvestment("ACME", ...)};
+\node[obj, below right=of port](m) {MetalInvestment("Gold", ...)};
+
+\draw[-{Stealth}] (mw) -- (gc);
+\draw[-{Stealth}] (sd) -- (gc);
+\draw[-{Stealth}] (gc) -- (mkt);
+\draw[-{Stealth}] (gc) -- (fund);
+\draw[-{Stealth}] (fund) -- (port);
+\draw[-{Stealth}] (port) -- (d);
+\draw[-{Stealth}] (port) -- (s);
+\draw[-{Stealth}] (port) -- (m);
+\end{tikzpicture}}
+\caption{Основные объекты во время работы программы и их связи.}
+\label{fig:object-diagram}
+\end{figure}
+
+\section{Инструментальные средства}
+C++ стандартная библиотека (\texttt{<algorithm>}, \texttt{<numeric>}, \texttt{<cmath>}, \texttt{<random>} и др.) и Qt 6 (Widgets): \texttt{QApplication}, \texttt{QMainWindow}, \texttt{QDialog}, \texttt{QLabel}, \texttt{QPushButton}, \texttt{QTabWidget}, \texttt{QTableWidget}, \texttt{QTableWidgetItem}, \texttt{QVBoxLayout}, \texttt{QHBoxLayout}, \texttt{QFormLayout}, \texttt{QSpinBox}, \texttt{QDoubleSpinBox}, \texttt{QLineEdit}, \texttt{QFileDialog}, \texttt{QMessageBox}, \texttt{QHeaderView}, \texttt{QTextStream}, \texttt{QString}/\texttt{QStringList} и др.
+
+\section{Модульная (файловая) структура}
 \begin{center}
 \begin{tabular}{ll}
 \toprule
-Файл & Назначение \\
+Файл & Классы/содержимое \\
 \midrule
-\texttt{main.cpp} & Точка входа, базовые параметры симуляции \\
-\texttt{GameController.cpp} & Шаг месяца, история, расчёт KPI \\
-\texttt{Market.cpp} & Стохастическая динамика рынка, CRUD справочников \\
-\texttt{InvestmentFund.cpp} & Симуляция месяца: прибыль, налог, притоки \\
-\texttt{DepositInvestment.cpp} & Депозит: помесячная капитализация + пролонгация \\
-\texttt{BondInvestment.cpp} & Облигация: помесячная доходность от номинала \\
-\texttt{CurrencyInvestment.cpp} & Валюта: помесячная доходность от суммы \\
-\texttt{MetalInvestment.cpp}, \texttt{StockInvestment.cpp} & Оценка по рыночной цене (mark-to-market) \\
-\texttt{MainWindow.cpp} & Интерфейс: вкладки, таблицы, покупки/продажа, настройки \\
+\texttt{main.cpp} & точка входа; создание \texttt{GameController}, \texttt{MainWindow} \\
+\texttt{GameController.cpp} & \texttt{GameController} (конструктор, \texttt{nextMonth()}, \texttt{computeSummary()}) \\
+\texttt{Market.cpp} & \texttt{Market} (сто\-хастика, CRUD справочников) \\
+\texttt{Investment.h/.cpp} & абстрактный \texttt{Investment} \\
+\texttt{DepositInvestment.cpp} & \texttt{DepositInvestment} \\
+\texttt{BondInvestment.cpp} & \texttt{BondInvestment} \\
+\texttt{CurrencyInvestment.cpp} & \texttt{CurrencyInvestment} \\
+\texttt{MetalInvestment.cpp} & \texttt{MetalInvestment} \\
+\texttt{StockInvestment.cpp} & \texttt{StockInvestment} \\
+\texttt{Portfolio.cpp} & \texttt{Portfolio} (контейнер позиций) \\
+\texttt{InvestmentFund.cpp} & \texttt{InvestmentFund} (учёт месяца, buy/sell) \\
+\texttt{MainWindow.cpp} & GUI: вкладки, таблицы, диалоги, `Apply Settings` \\
+\texttt{SummaryDialog.cpp} & окно KPI и экспорт CSV \\
+\texttt{Utils.cpp} & \texttt{Rng} (генератор случайностей) \\
 \bottomrule
 \end{tabular}
 \end{center}
 
-\section{Модель рынка и доходностей}
-\subsection*{Акции}
-Ежемесячное изменение цены моделируется нормальным распределением:
-\[
-\Delta S \sim \mathcal{N}(\mu, \sigma), \quad S_{t+1} = \max\{1,\; S_t (1 + \Delta S)\},
-\]
-где по умолчанию $\mu \approx 0{,}5\%$, $\sigma \approx 5\%$.
+\section{Краткое описание пользовательского интерфейса}
+\textbf{Simulation.} Верхняя панель: месяц/из $M$, налог, ставка депозита, \emph{Total Equity}, \emph{Cash}, \emph{Last Month Profit}. Таблица портфеля и вкладки котировок (акции с $\Delta$, облигации, металлы). Кнопки: \emph{Next Month}, \emph{Add Deposit/Stock/Currency/Bond/Metal}, \emph{Sell Selected}.
 
-\subsection*{Валюты}
-Курс обновляется равномерным дрейфом в диапазоне $\pm r_\text{fx}$:
-\[
-R_{t+1} = \max\{0.01,\; R_t (1 + U[-r_\text{fx}, r_\text{fx}])\}, \quad r_\text{fx}\approx 2\%.
-\]
+\textbf{Settings.} Параметры: \emph{Total months}, \emph{Initial capital}, \emph{Tax rate}, \emph{Deposit rate}; справа — справочники \emph{Companies}, \emph{Currencies}, \emph{Bonds}, \emph{Metals}. Кнопка \emph{Apply Settings}.
 
-\subsection*{Облигации}
-Годовая доходность $\mathit{Y}$ слабо колеблется ($\pm 0{,}5$ п.п.) и зажимается в $[0,1]$. Начисление в портфеле~--- помесячная капитализация по номиналу $P$:
-\[
-\text{profit}_{t} = \frac{\mathit{Y}}{12} \cdot P, \qquad P \leftarrow P + \text{profit}_{t}.
-\]
+\textbf{Диалоги.} Покупка депозита (сумма+ставка+срок), акции (сумма+компания), валюты (сумма+месячная ставка), облигации (сумма+выпуск), металла (сумма+тип). Валидация на кэш/параметры.
 
-\subsection*{Металлы}
-Цена металла изменяется равномерно в $\pm r_\text{metal}$ (по умолчанию $3\%$), рыночная стоимость позиции~--- mark-to-market.
-
-\subsection*{Депозиты}
-Помесячная капитализация по текущей ставке $\mathit{R}_\text{year}$:
-\[
-\text{interest}_t = \frac{\mathit{R}_\text{year}}{12} \cdot P, \qquad P \leftarrow P + \text{interest}_t.
-\]
-По окончании срока депозит пролонгируется: ставка обновляется из рыночной \texttt{depositRate} с ограничениями (например, $[1\%,25\%]$).
-
-\section{Алгоритм помесячной симуляции}
-На каждом шаге $t$:
-\begin{enumerate}[nosep]
-  \item Обновить рынок (акции, валюты, облигации, металлы) согласно моделям.
-  \item Для каждой позиции портфеля вычислить прибыль/убыток \texttt{stepMonth()} и агрегировать портфельную прибыль $\Pi_t$.
-  \item Налог: если $\Pi_t > 0$, удержать $\mathrm{Tax}_t = \tau \cdot \Pi_t$ (уменьшить кэш).
-  \item Притоки/оттоки: $\mathrm{Flow}_t = k \cdot \Pi_t$ (по умолчанию $k=0{,}5$), учесть в кэше.
-  \item Обновить: \emph{cash}, \emph{equity} $= \text{cash} + \text{market value}$.
-  \item Записать в историю: \emph{EquityBefore}, \emph{PortfolioProfit}, \emph{TaxPaid}, \emph{Flow}, \emph{EquityAfter}.
-\end{enumerate}
-
-\section{Показатели эффективности}
-Пусть $E_t$~--- стоимость капитала после месяца $t$, $E_0$~--- начальная стоимость. Тогда:
-\begin{align*}
-\text{Итоговая доходность} &: \quad R_\text{tot} = \frac{E_T - E_0}{E_0},\\
-\text{Месячные доходности} &: \quad r_t = \frac{E_t - E_{t-1}}{E_{t-1}},\\
-\text{Средняя и волатильность} &: \quad \bar r = \frac{1}{T}\sum r_t, \quad \sigma = \sqrt{\frac{1}{T}\sum (r_t - \bar r)^2},\\
-\text{Годовая (аппрокс.)} &: \quad R_\text{ann} \approx (1 + R_\text{tot})^{12/T} - 1,\\
-\text{Доля прибыльных месяцев} &: \quad \frac{\#\{t: r_t > 0\}}{T}\cdot 100\%,\\
-\text{Макс. просадка} &: \quad \max_{t}\frac{\max_{s\le t} E_s - E_t}{\max_{s\le t} E_s}.
-\end{align*}
-
-\section{Интерфейс пользователя}
-\textbf{Simulation}: сводные метрики (месяц/из $M$, ставка налога, ставка депозита, equity, cash, прибыль за прошлый месяц), таблица портфеля (тип, имя, стоимость, комментарий), вкладки цен: акции (цена, $\Delta$), облигации (годовая доходность), металлы (цена); кнопки: \emph{Next Month}, \emph{Add Deposit/Stock/Currency/Bond/Metal}, \emph{Sell Selected}.
-
-\textbf{Settings}: параметры симуляции (месяцы $M$, стартовый капитал, налог $\tau$, базовая депозитная ставка), параметры случайности (дрейф/вола акций, диапазоны валют/металлов), редактируемые справочники (компании, валюты, облигации, металлы), кнопка \emph{Apply Settings}.
-
-\section{Сборка и запуск}
-Требования: CMake ($\geq$3.21), компилятор C++17, Qt~6 (Widgets).
-
-Пример сборки:
-\begin{lstlisting}[style=cppstyle]
-cmake -S . -B build -DCMAKE_PREFIX_PATH=/path/to/Qt/6.5/gcc_64
-cmake --build build -j
-./build/PortfolioSim
-\end{lstlisting}
-
-\section{Тестирование и воспроизводимость}
-В проекте используется единая генерация случайностей и фиксируемые начальные параметры. Для воспроизводимых экспериментов рекомендуется фиксировать seed генератора и сохранять историю помесячных результатов для последующего анализа.
-
-\section{Ограничения и развитие}
-\begin{itemize}[nosep]
-  \item Не учитываются комиссии/спрэды/дивиденды/купоны отдельно от переоценки~--- можно добавить.
-  \item Модель притоков/оттоков задаётся простым коэффициентом~--- можно связать с текущей доходностью/волатильностью.
-  \item Расширить отчётность: VaR/CVaR, Sharpe/Sortino, стресс-тесты.
-\end{itemize}
-
-\section*{Заключение}
-Создана учебная симуляция портфельного управления с помесячной динамикой рынка, учётом налога и денежных потоков, интерактивным интерфейсом и итоговой аналитикой. Архитектура модульная, параметры гибко настраиваются, что позволяет исследовать стратегии аллокации активов при различных сценариях волатильности.
+\textbf{Итоги.} \emph{Simulation Summary}: KPI и таблица помесячной истории, \emph{Export CSV}.
 
 \end{document}
